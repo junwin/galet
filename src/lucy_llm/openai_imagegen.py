@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Optional
 
 # The real 'openai' package may not be available in test environments. Provide
@@ -35,6 +33,7 @@ except Exception:  # pragma: no cover - environment dependent
 from .imagegen_dto import ImageGenResponse
 from .imagegen_interface import ImageGenApi
 from .openai_responses import _sleep_backoff
+from .settings import Settings, default_settings
 
 
 class OpenAIImageGenApi(ImageGenApi):
@@ -59,19 +58,17 @@ class OpenAIImageGenApi(ImageGenApi):
         max_attempts: int = 4,
         backoff_base: float = 0.5,
         backoff_cap: float = 8.0,
+        settings: Optional[Settings] = None,
     ) -> None:
-        self._client = client or self._build_default_client()
+        self._client = client
+        self._settings = settings or default_settings
         self._max_attempts = max_attempts
         self._backoff_base = backoff_base
         self._backoff_cap = backoff_cap
 
     @staticmethod
-    def _build_default_client() -> OpenAI:
-        config = ConfigManager("config.json")
-        credential_path = config.get("credential_path")
-        with open(os.path.join(credential_path, "oaicred.json"), "r", encoding="utf-8") as f:
-            config_data = json.load(f)
-        return OpenAI(api_key=config_data["openai_api_key"])
+    def _build_default_client(settings: Optional[Settings] = None) -> OpenAI:
+        return OpenAI(api_key=(settings or default_settings).api_key("openai"))
 
     def generate_image(
         self,

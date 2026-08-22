@@ -8,6 +8,7 @@ from openai import OpenAI
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .openai_responses import _sleep_backoff
+from .settings import Settings, default_settings
 
 
 class OllamaApi(LLMApi):
@@ -31,8 +32,10 @@ class OllamaApi(LLMApi):
         backoff_base: float = 0.5,
         backoff_cap: float = 8.0,
         base_url: Optional[str] = None,
+        settings: Optional[Settings] = None,
     ) -> None:
-        self._client = client or self._build_default_client(base_url)
+        self._settings = settings or default_settings
+        self._client = client or self._build_default_client(base_url, self._settings)
         self._max_attempts = max_attempts
         self._backoff_base = backoff_base
         self._backoff_cap = backoff_cap
@@ -40,17 +43,20 @@ class OllamaApi(LLMApi):
         self._conversation_context: Dict[str, List[Dict[str, Any]]] = {}
 
     @staticmethod
-    def _build_default_client(base_url: Optional[str] = None) -> OpenAI:
+    def _build_default_client(
+        base_url: Optional[str] = None,
+        settings: Optional[Settings] = None,
+    ) -> OpenAI:
         url = base_url
         if url is None:
-            url = OllamaApi._resolve_base_url()
+            url = OllamaApi._resolve_base_url(settings)
         return OpenAI(
             api_key="ollama",  # placeholder — Ollama doesn't require a real key
             base_url=url,
         )
 
     @staticmethod
-    def _resolve_base_url() -> str:
+    def _resolve_base_url(settings: Optional[Settings] = None) -> str:
         """Resolve the Ollama base URL from config.json, falling back to the class constant.
 
         The URL is an endpoint, not a secret — it lives in config.json as
@@ -59,8 +65,7 @@ class OllamaApi(LLMApi):
         config access falls back to OLLAMA_BASE_URL.
         """
         try:
-            config = ConfigManager("config.json")
-            url = config.get("ollama_base_url")
+            url = (settings or default_settings).base_url()
             if url:
                 return url
         except Exception as e:

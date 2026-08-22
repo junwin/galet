@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
@@ -9,6 +7,7 @@ from openai import OpenAI
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .openai_responses import _sleep_backoff
+from .settings import Settings, default_settings
 import logging
 
 
@@ -24,24 +23,25 @@ class MistralApi(LLMApi):
         max_attempts: int = 4,
         backoff_base: float = 0.5,
         backoff_cap: float = 8.0,
+        settings: Optional[Settings] = None,
     ) -> None:
-        self._client = client or self._build_default_client()
+        self._client = client
+        self._settings = settings or default_settings
         self._max_attempts = max_attempts
         self._backoff_base = backoff_base
         self._backoff_cap = backoff_cap
         # Store conversation context by response_id
         self._conversation_context: Dict[str, List[Dict[str, Any]]] = {}
 
+    def _get_client(self) -> OpenAI:
+        if self._client is None:
+            self._client = self._build_default_client(self._settings)
+        return self._client
+
     @staticmethod
-    def _build_default_client() -> OpenAI:
-        config = ConfigManager("config.json")
-        credential_path = config.get("credential_path")
-
-        with open(os.path.join(credential_path, "mistral_cred.json"), "r", encoding="utf-8") as f:
-            config_data = json.load(f)
-
+    def _build_default_client(settings: Optional[Settings] = None) -> OpenAI:
         return OpenAI(
-            api_key=config_data["mistral_api_key"],
+            api_key=(settings or default_settings).api_key("mistral"),
             base_url=MistralApi.MISTRAL_BASE_URL,
         )
 
@@ -354,7 +354,7 @@ class MistralApi(LLMApi):
                 if tool_choice:
                     request_params["tool_choice"] = tool_choice
 
-                resp = self._client.chat.completions.create(**request_params)
+                resp = self._get_client().chat.completions.create(**request_params)
 
                 # Extract from chat completion response format
                 response_id = getattr(resp, "id", None)

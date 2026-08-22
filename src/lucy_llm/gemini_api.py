@@ -25,6 +25,7 @@ except Exception:
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .openai_responses import _sleep_backoff
+from .settings import Settings, default_settings
 
 _TOOL_CHOICE_MAP: Dict[str, str] = {"auto": "auto", "required": "any", "none": "none"}
 
@@ -75,16 +76,23 @@ class GeminiApi(LLMApi):
         backoff_base: float = 0.5,
         backoff_cap: float = 8.0,
         cache_size: int = 1000,
+        settings: Optional[Settings] = None,
     ) -> None:
-        self._client = client or self._build_default_client()
+        self._client = client
+        self._settings = settings or default_settings
         self._max_attempts = max_attempts
         self._backoff_base = backoff_base
         self._backoff_cap = backoff_cap
         self._max_cache_size = cache_size
         self._system_instruction_cache: OrderedDict[str, str] = OrderedDict()
 
+    def _get_client(self) -> genai.Client:
+        if self._client is None:
+            self._client = self._build_default_client(self._settings)
+        return self._client
+
     @staticmethod
-    def _build_default_client() -> genai.Client:
+    def _build_default_client(settings: Optional[Settings] = None) -> genai.Client:
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             return genai.Client(api_key=api_key)
@@ -110,16 +118,9 @@ class GeminiApi(LLMApi):
                     pass
 
         try:
-            config = ConfigManager("config.json")
-            credential_path = config.get("credential_path")
-            if credential_path:
-                cred_file = os.path.join(credential_path, "gemini_cred.json")
-                if os.path.isfile(cred_file):
-                    with open(cred_file, "r", encoding="utf-8") as f:
-                        config_data = json.load(f)
-                    key = config_data.get("gemini_api_key") or config_data.get("api_key")
-                    if key:
-                        return genai.Client(api_key=key)
+            key = (settings or default_settings).api_key("gemini")
+            if key:
+                return genai.Client(api_key=key)
         except Exception:
             pass
 
@@ -298,7 +299,7 @@ class GeminiApi(LLMApi):
                 if generation_config:
                     request_params["generation_config"] = generation_config
 
-                interaction = self._client.interactions.create(**request_params)
+                interaction = self._get_client().interactions.create(**request_params)
 
                 elapsed = time.time() - t0
                 response_id = getattr(interaction, "id", None)
