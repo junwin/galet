@@ -10,15 +10,10 @@ from .gemini_api import GeminiApi
 from .mistral_api import MistralApi
 from .ollama_api import OllamaApi
 from .provider_registry import ProviderRegistry
+from .settings import Settings, default_settings
 
 
 class RouterApi(LLMApi):
-    """Routes LLM requests to the correct backend based on the model name.
-
-    This implementation delegates provider resolution to ProviderRegistry and
-    lazily caches provider API instances keyed by provider name.
-    """
-
     def __init__(
         self,
         *,
@@ -28,12 +23,12 @@ class RouterApi(LLMApi):
         ollama_api: Optional[OllamaApi] = None,
         gemini_api: Optional[GeminiApi] = None,
         registry: ProviderRegistry = ProviderRegistry(),
+        settings: Optional[Settings] = None,
     ) -> None:
         self._registry = registry
-        # cache of provider_name -> LLMApi instance
+        self._settings = settings or default_settings
         self._instances: Dict[str, LLMApi] = {}
 
-        # If explicit instances were provided, seed the cache.
         if openai_api is not None:
             self._instances["openai"] = openai_api
         if deepseek_api is not None:
@@ -46,24 +41,16 @@ class RouterApi(LLMApi):
             self._instances["gemini"] = gemini_api
 
     def _get_provider_and_api(self, model: Optional[str], provider: Optional[str]) -> Tuple[str, LLMApi]:
-        # Resolve provider name (may raise ValueError for unknown explicit provider)
         provider_name = self._registry.resolve_name(model, provider)
 
         if provider_name in self._instances:
             return provider_name, self._instances[provider_name]
 
-        # Ask registry to resolve and instantiate the provider implementation.
-        resolved_name, api = self._registry.resolve(model, provider)
-        # Cache and return
+        resolved_name, api = self._registry.resolve(model, provider, settings=self._settings)
         self._instances[resolved_name] = api
         return resolved_name, api
 
     def supports_image_processing(self, model: str, provider: Optional[str] = None) -> bool:
-        """Check whether the selected model supports native image processing.
-
-        Delegates provider resolution to ProviderRegistry and then calls the
-        provider-specific implementation.
-        """
         _, api = self._get_provider_and_api(model, provider)
         return api.supports_image_processing(model)
 
