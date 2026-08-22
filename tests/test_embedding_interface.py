@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from lucy_llm.embedding_dto import EmbeddingResponse
-from lucy_llm.embedding_interface import EmbeddingApi
+from galet.embedding_dto import EmbeddingResponse
+from galet.embedding_interface import EmbeddingApi
 
 
 class ValidEmbedder:

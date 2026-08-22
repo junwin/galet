@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from lucy_llm.imagegen_dto import ImageGenResponse
-from lucy_llm.imagegen_interface import ImageGenApi
+from galet.imagegen_dto import ImageGenResponse
+from galet.imagegen_interface import ImageGenApi
 
 
 class ValidImageGen:

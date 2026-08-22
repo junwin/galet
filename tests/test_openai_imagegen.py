@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from lucy_llm.openai_imagegen import OpenAIImageGenApi
-from lucy_llm.settings import Settings
+from galet.openai_imagegen import OpenAIImageGenApi
+from galet.settings import Settings
 
 
 class TestOpenAIImageGenNotImplemented:
@@ -54,7 +54,7 @@ class TestOpenAIImageGenClientBuilding:
             with open(cred_file, "w") as f:
                 f.write('{"openai_api_key": "sk-img-test"}')
 
-            with patch("lucy_llm.openai_imagegen.OpenAI") as MockOpenAI:
+            with patch("galet.openai_imagegen.OpenAI") as MockOpenAI:
                 OpenAIImageGenApi._build_default_client(
                     settings=Settings(credential_path=tmpdir)
                 )

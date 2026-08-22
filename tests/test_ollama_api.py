@@ -9,9 +9,9 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock, patch
 
-from lucy_llm.ollama_api import OllamaApi
-from lucy_llm.dto import LLMResponse, LLMUsage, ToolCall
-from lucy_llm.settings import Settings
+from galet.ollama_api import OllamaApi
+from galet.dto import LLMResponse, LLMUsage, ToolCall
+from galet.settings import Settings
 
 
 # ---------------------------------------------------------------------------

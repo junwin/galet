@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lucy_llm.dto import LLMResponse
-from lucy_llm.gemini_api import GeminiApi
-from lucy_llm.settings import Settings
+from galet.dto import LLMResponse
+from galet.gemini_api import GeminiApi
+from galet.settings import Settings
 
 
 def _stub_interaction(
@@ -333,21 +333,21 @@ def test_exhausted_retries_raises_last_error() -> None:
 
 
 @patch.dict("os.environ", {"GEMINI_API_KEY": "env-key-123"}, clear=True)
-@patch("lucy_llm.gemini_api.genai.Client")
+@patch("galet.gemini_api.genai.Client")
 def test_build_default_client_env_api_key(mock_client_cls: MagicMock) -> None:
     GeminiApi._build_default_client()
     mock_client_cls.assert_called_once_with(api_key="env-key-123")
 
 
 @patch.dict("os.environ", {"GEMINI_CREDENTIALS": '{"gemini_api_key": "cred-json-key"}'}, clear=True)
-@patch("lucy_llm.gemini_api.genai.Client")
+@patch("galet.gemini_api.genai.Client")
 def test_build_default_client_env_credentials_json(mock_client_cls: MagicMock) -> None:
     GeminiApi._build_default_client()
     mock_client_cls.assert_called_once_with(api_key="cred-json-key")
 
 
 @patch.dict("os.environ", {}, clear=True)
-@patch("lucy_llm.gemini_api.genai.Client")
+@patch("galet.gemini_api.genai.Client")
 @patch("builtins.open")
 def test_build_default_client_settings_credential_file(
     mock_open: MagicMock,

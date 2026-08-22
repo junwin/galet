@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import pytest
 
-from lucy_llm.openai_responses import OpenAIResponsesApi
-from lucy_llm.mistral_api import MistralApi
-from lucy_llm.deepseek_responses import DeepSeekApi
-from lucy_llm.ollama_api import OllamaApi
-from lucy_llm.gemini_api import GeminiApi
-from lucy_llm.router_api import RouterApi
+from galet.openai_responses import OpenAIResponsesApi
+from galet.mistral_api import MistralApi
+from galet.deepseek_responses import DeepSeekApi
+from galet.ollama_api import OllamaApi
+from galet.gemini_api import GeminiApi
+from galet.router_api import RouterApi
 
 
 # ---------------------------------------------------------------------------

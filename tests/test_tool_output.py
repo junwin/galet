@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lucy_llm.tool_output import format_tool_output
+from galet.tool_output import format_tool_output
 
 
 def test_default_shape() -> None:

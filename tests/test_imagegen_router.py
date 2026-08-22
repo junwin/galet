@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from lucy_llm.imagegen_dto import ImageGenResponse, ImageResult
-from lucy_llm.imagegen_router import ImageGenRouter
+from galet.imagegen_dto import ImageGenResponse, ImageResult
+from galet.imagegen_router import ImageGenRouter
 
 
 # ---------------------------------------------------------------------------

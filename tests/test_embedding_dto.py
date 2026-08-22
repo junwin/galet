@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from lucy_llm.dto import LLMUsage
-from lucy_llm.embedding_dto import EmbeddingResponse
+from galet.dto import LLMUsage
+from galet.embedding_dto import EmbeddingResponse
 
 
 class TestEmbeddingResponse:

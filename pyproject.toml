@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lucy_llm"
+name = "galet"
 version = "0.1.0"
 description = "Provider-agnostic LLM, embedding, and image generation stack extracted from the Lucy monorepo"
 readme = "README.md"
