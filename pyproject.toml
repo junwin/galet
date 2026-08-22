@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lucy_llm"
+version = "0.1.0"
+description = "Provider-agnostic LLM, embedding, and image generation stack extracted from the Lucy monorepo"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "junwin", email = "jdunwin@gmail.com" }]
+
+[project.optional-dependencies]
+openai = ["openai"]
+gemini = ["google-genai"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
