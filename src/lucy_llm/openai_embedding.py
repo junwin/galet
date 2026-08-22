@@ -32,7 +32,6 @@ except Exception:  # pragma: no cover - environment dependent
     class RateLimitError(Exception):
         pass
 
-from src.config_manager import ConfigManager
 
 from .embedding_dto import EmbeddingResponse
 from .embedding_interface import EmbeddingApi

@@ -8,7 +8,6 @@ from typing import Optional
 
 from openai import OpenAI
 
-from src.config_manager import ConfigManager
 
 from .embedding_dto import EmbeddingResponse
 from .embedding_interface import EmbeddingApi

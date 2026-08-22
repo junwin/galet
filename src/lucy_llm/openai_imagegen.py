@@ -31,7 +31,6 @@ except Exception:  # pragma: no cover - environment dependent
     class RateLimitError(Exception):
         pass
 
-from src.config_manager import ConfigManager
 
 from .imagegen_dto import ImageGenResponse
 from .imagegen_interface import ImageGenApi

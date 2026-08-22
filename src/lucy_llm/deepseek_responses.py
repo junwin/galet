@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from openai import OpenAI
 
-from src.config_manager import ConfigManager
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .openai_responses import _sleep_backoff

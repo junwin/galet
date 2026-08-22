@@ -21,7 +21,6 @@ except Exception:
     class genai:  # type: ignore
         Client = _GenaiClientStub
 
-from src.config_manager import ConfigManager
 
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi

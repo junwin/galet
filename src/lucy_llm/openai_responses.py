@@ -33,7 +33,6 @@ except Exception:  # pragma: no cover - environment dependent
     class RateLimitError(Exception):
         pass
 
-from src.config_manager import ConfigManager
 
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi

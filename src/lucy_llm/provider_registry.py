@@ -20,11 +20,11 @@ from .dto import LLMResponse
 
 # Map of canonical provider name -> import path for the LLMApi class.
 PROVIDERS: Dict[str, str] = {
-    "openai": "src.llm.openai_responses.OpenAIResponsesApi",
-    "deepseek": "src.llm.deepseek_responses.DeepSeekApi",
-    "gemini": "src.llm.gemini_api.GeminiApi",
-    "mistral": "src.llm.mistral_api.MistralApi",
-    "ollama": "src.llm.ollama_api.OllamaApi",
+    "openai": "lucy_llm.openai_responses.OpenAIResponsesApi",
+    "deepseek": "lucy_llm.deepseek_responses.DeepSeekApi",
+    "gemini": "lucy_llm.gemini_api.GeminiApi",
+    "mistral": "lucy_llm.mistral_api.MistralApi",
+    "ollama": "lucy_llm.ollama_api.OllamaApi",
 }
 
 # Prefix map: model-name prefix -> provider name (checked in order of the keys)
