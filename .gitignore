@@ -23,6 +23,7 @@ htmlcov/
 
 # Credential files
 *_cred.json
+*cred*.json
 oaicred.json
 
 # OS / editor
