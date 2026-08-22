@@ -6,8 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.llm.dto import LLMResponse
-from src.llm.gemini_api import GeminiApi
+from lucy_llm.dto import LLMResponse
+from lucy_llm.gemini_api import GeminiApi
+from lucy_llm.settings import Settings
 
 
 def _stub_interaction(
@@ -332,39 +333,30 @@ def test_exhausted_retries_raises_last_error() -> None:
 
 
 @patch.dict("os.environ", {"GEMINI_API_KEY": "env-key-123"}, clear=True)
-@patch("src.llm.gemini_api.genai.Client")
+@patch("lucy_llm.gemini_api.genai.Client")
 def test_build_default_client_env_api_key(mock_client_cls: MagicMock) -> None:
     GeminiApi._build_default_client()
     mock_client_cls.assert_called_once_with(api_key="env-key-123")
 
 
 @patch.dict("os.environ", {"GEMINI_CREDENTIALS": '{"gemini_api_key": "cred-json-key"}'}, clear=True)
-@patch("src.llm.gemini_api.genai.Client")
+@patch("lucy_llm.gemini_api.genai.Client")
 def test_build_default_client_env_credentials_json(mock_client_cls: MagicMock) -> None:
     GeminiApi._build_default_client()
     mock_client_cls.assert_called_once_with(api_key="cred-json-key")
 
 
 @patch.dict("os.environ", {}, clear=True)
-@patch("src.llm.gemini_api.genai.Client")
-@patch("src.llm.gemini_api.ConfigManager")
-@patch("os.path.isfile", return_value=True)
+@patch("lucy_llm.gemini_api.genai.Client")
 @patch("builtins.open")
-def test_build_default_client_config_manager(
+def test_build_default_client_settings_credential_file(
     mock_open: MagicMock,
-    mock_isfile: MagicMock,
-    mock_config_mgr: MagicMock,
     mock_client_cls: MagicMock,
 ) -> None:
-    mock_config_instance = MagicMock()
-    mock_config_instance.get.return_value = "/path/to/creds"
-    mock_config_mgr.return_value = mock_config_instance
-
     mock_open.return_value.__enter__.return_value = SimpleNamespace(
         read=lambda: '{"gemini_api_key": "file-key-456"}'
     )
 
-    with patch("json.load", return_value={"gemini_api_key": "file-key-456"}):
-        GeminiApi._build_default_client()
+    GeminiApi._build_default_client(settings=Settings(credential_path="/path/to/creds"))
 
     mock_client_cls.assert_called_once_with(api_key="file-key-456")

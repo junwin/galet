@@ -8,9 +8,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.llm.dto import LLMUsage
-from src.llm.embedding_dto import EmbeddingResponse
-from src.llm.openai_embedding import OpenAIEmbeddingApi
+from lucy_llm.dto import LLMUsage
+from lucy_llm.embedding_dto import EmbeddingResponse
+from lucy_llm.openai_embedding import OpenAIEmbeddingApi
+from lucy_llm.settings import Settings
 
 
 # ---------------------------------------------------------------------------
@@ -200,12 +201,10 @@ class TestOpenAIEmbeddingClientBuilding:
             with open(cred_file, "w") as f:
                 f.write('{"openai_api_key": "sk-test-key"}')
 
-            with patch("src.llm.openai_embedding.ConfigManager") as MockConfig, \
-                 patch("src.llm.openai_embedding.OpenAI") as MockOpenAI:
-                mock_cm = MockConfig.return_value
-                mock_cm.get.return_value = tmpdir
-
-                OpenAIEmbeddingApi._build_default_client()
+            with patch("lucy_llm.openai_embedding.OpenAI") as MockOpenAI:
+                OpenAIEmbeddingApi._build_default_client(
+                    settings=Settings(credential_path=tmpdir)
+                )
 
                 MockOpenAI.assert_called_once_with(api_key="sk-test-key")
 
@@ -215,7 +214,7 @@ class TestOpenAIImportFallback:
 
     def test_module_imports_without_openai(self) -> None:
         """openai_embedding.py is importable even when openai is not installed."""
-        from src.llm.openai_embedding import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError
+        from lucy_llm.openai_embedding import APIConnectionError, APIError, APITimeoutError, OpenAI, RateLimitError
 
         assert OpenAI is not None
         assert APIConnectionError is not None

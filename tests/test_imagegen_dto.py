@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.llm.imagegen_dto import ImageGenResponse, ImageResult
+from lucy_llm.imagegen_dto import ImageGenResponse, ImageResult
 
 
 class TestImageResult:

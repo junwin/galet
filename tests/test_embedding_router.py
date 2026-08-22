@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from src.llm.embedding_dto import EmbeddingResponse
-from src.llm.embedding_router import EmbeddingRouter
+from lucy_llm.embedding_dto import EmbeddingResponse
+from lucy_llm.embedding_router import EmbeddingRouter
 
 
 # ---------------------------------------------------------------------------

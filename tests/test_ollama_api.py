@@ -9,8 +9,9 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.llm.ollama_api import OllamaApi
-from src.llm.dto import LLMResponse, LLMUsage, ToolCall
+from lucy_llm.ollama_api import OllamaApi
+from lucy_llm.dto import LLMResponse, LLMUsage, ToolCall
+from lucy_llm.settings import Settings
 
 
 # ---------------------------------------------------------------------------
@@ -89,11 +90,7 @@ def test_custom_base_url() -> None:
 
 def test_config_override_base_url() -> None:
     """ollama_base_url from config.json overrides the default."""
-    with patch("src.llm.ollama_api.ConfigManager") as MockConfig:
-        mock_cm = MockConfig.return_value
-        mock_cm.get.return_value = "http://192.168.1.50:11434/v1"
-
-        api = OllamaApi()
+    api = OllamaApi(settings=Settings(ollama_base_url="http://192.168.1.50:11434/v1"))
 
     assert api._client.base_url.host == "192.168.1.50"
     assert api._client.base_url.port == 11434
@@ -101,11 +98,7 @@ def test_config_override_base_url() -> None:
 
 def test_missing_config_key_falls_back_to_default() -> None:
     """Missing ollama_base_url config key falls back to localhost:11434."""
-    with patch("src.llm.ollama_api.ConfigManager") as MockConfig:
-        mock_cm = MockConfig.return_value
-        mock_cm.get.return_value = None
-
-        api = OllamaApi()
+    api = OllamaApi(settings=Settings())
 
     assert api._client.base_url.host == "localhost"
     assert api._client.base_url.port == 11434

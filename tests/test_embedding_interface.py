@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from src.llm.embedding_dto import EmbeddingResponse
-from src.llm.embedding_interface import EmbeddingApi
+from lucy_llm.embedding_dto import EmbeddingResponse
+from lucy_llm.embedding_interface import EmbeddingApi
 
 
 class ValidEmbedder:

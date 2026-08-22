@@ -8,8 +8,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.llm.embedding_dto import EmbeddingResponse
-from src.llm.mistral_embedding import MistralEmbeddingApi
+from lucy_llm.embedding_dto import EmbeddingResponse
+from lucy_llm.mistral_embedding import MistralEmbeddingApi
+from lucy_llm.settings import Settings
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +120,10 @@ class TestMistralEmbeddingClientBuilding:
             with open(cred_file, "w") as f:
                 f.write('{"mistral_api_key": "sk-mistral-test"}')
 
-            with patch("src.llm.mistral_embedding.ConfigManager") as MockConfig, \
-                 patch("src.llm.mistral_embedding.OpenAI") as MockOpenAI:
-                mock_cm = MockConfig.return_value
-                mock_cm.get.return_value = tmpdir
-
-                MistralEmbeddingApi._build_default_client()
+            with patch("lucy_llm.mistral_embedding.OpenAI") as MockOpenAI:
+                MistralEmbeddingApi._build_default_client(
+                    settings=Settings(credential_path=tmpdir)
+                )
 
                 MockOpenAI.assert_called_once_with(
                     api_key="sk-mistral-test",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from src.llm.dto import LLMUsage
-from src.llm.embedding_dto import EmbeddingResponse
+from lucy_llm.dto import LLMUsage
+from lucy_llm.embedding_dto import EmbeddingResponse
 
 
 class TestEmbeddingResponse:
