@@ -144,6 +144,42 @@ def test_to_gemini_input_passthrough_function_result() -> None:
     ]
 
 
+def test_content_to_parts_base64_image() -> None:
+    content = [
+        {"type": "text", "text": "Describe this image"},
+        {"type": "image", "source": {"data": "cGljdHVyZQ==", "mime_type": "image/png"}},
+    ]
+    assert GeminiApi._content_to_parts(content) == [
+        {"type": "text", "text": "Describe this image"},
+        {"type": "image", "data": "cGljdHVyZQ==", "mime_type": "image/png"},
+    ]
+
+
+def test_content_to_parts_base64_image_default_mime_type() -> None:
+    content = [{"type": "image", "source": {"data": "cGljdHVyZQ=="}}]
+    assert GeminiApi._content_to_parts(content) == [
+        {"type": "image", "data": "cGljdHVyZQ==", "mime_type": "image/png"},
+    ]
+
+
+def test_content_to_parts_url_image() -> None:
+    content = [
+        {"type": "image", "source": {"url": "https://example.com/cat.png", "mime_type": "image/png"}}
+    ]
+    assert GeminiApi._content_to_parts(content) == [
+        {"type": "image", "uri": "https://example.com/cat.png", "mime_type": "image/png"},
+    ]
+
+
+def test_content_to_parts_uri_image() -> None:
+    content = [
+        {"type": "image", "source": {"uri": "gs://bucket/cat.png", "mime_type": "image/jpeg"}}
+    ]
+    assert GeminiApi._content_to_parts(content) == [
+        {"type": "image", "uri": "gs://bucket/cat.png", "mime_type": "image/jpeg"},
+    ]
+
+
 def test_create_response_normalizes_interaction() -> None:
     fake_client = MagicMock()
     stub = _stub_interaction(

@@ -162,8 +162,12 @@ class GeminiApi(LLMApi):
             if isinstance(part, dict) and part.get("type") == "image":
                 source = part.get("source")
                 if isinstance(source, dict):
-                    data = source.get("data", "")
+                    url = source.get("url") or source.get("uri")
                     mime_type = source.get("mime_type", "image/png")
+                    if url:
+                        parts.append({"type": "image", "uri": url, "mime_type": mime_type})
+                        continue
+                    data = source.get("data", "")
                 else:
                     data = ""
                     mime_type = "image/png"
