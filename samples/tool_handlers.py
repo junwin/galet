@@ -8,12 +8,27 @@ Run from the repo root:
 
     python samples/tool_handlers.py --provider ollama --model llama3.1 "Echo hello"
 
+    python samples/tool_handlers.py --credential-path /path/to/credentials --provider openai "Echo hello"
+
+    python samples/tool_handlers.py --ollama-base-url http://localhost:11434/v1 --provider ollama "Echo hello"
+
 The default provider is Ollama, which needs no API key but does require a
-local Ollama server at http://localhost:11434. Each tool is a handler that
-exposes name(), tool_def(), result_schema(), and execute(). The loop sends the
-prompt with the tool definitions, executes any tool calls the model returns,
-feeds the formatted results back, and repeats until the model answers without
-requesting a tool or the iteration cap is reached.
+local Ollama server at http://localhost:11434. Non-Ollama providers need an
+API key, which galet reads from environment variables (OPENAI_API_KEY,
+DEEPSEEK_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY), from credential files via
+``Settings(credential_path=...)``, or from the ``GALET_CREDENTIAL_PATH``
+environment variable (the directory holding the credential files). Pass
+``--credential-path`` to point at that directory explicitly.
+
+Ollama needs no API key, but galet must know the server address. It uses
+``--ollama-base-url`` when given, otherwise ``OLLAMA_BASE_URL``, otherwise the
+default ``http://localhost:11434/v1``.
+
+Each tool is a handler that exposes name(), tool_def(), result_schema(), and
+execute(). The loop sends the prompt with the tool definitions, executes any
+tool calls the model returns, feeds the formatted results back, and repeats
+until the model answers without requesting a tool or the iteration cap is
+reached.
 """
 
 from __future__ import annotations
@@ -24,6 +39,7 @@ from typing import Any, Dict, List, Optional, Protocol
 
 from galet.dto import ToolCall
 from galet.router_api import RouterApi
+from galet.settings import Settings
 from galet.tool_output import format_tool_output
 
 DEFAULT_MODELS = {
@@ -234,13 +250,30 @@ def main() -> None:
         default=10,
         help="Maximum number of tool-calling round trips.",
     )
+    parser.add_argument(
+        "--credential-path",
+        default=None,
+        help="Directory holding the galet credential files (e.g. oaicred.json). "
+        "Alternative to the GALET_CREDENTIAL_PATH environment variable.",
+    )
+    parser.add_argument(
+        "--ollama-base-url",
+        default=None,
+        help="Ollama server base URL (OpenAI-compatible endpoint). "
+        "Defaults to OLLAMA_BASE_URL or http://localhost:11434/v1.",
+    )
     args = parser.parse_args()
 
     model = args.model or DEFAULT_MODELS.get(args.provider, "llama3.1")
 
     registry = ToolRegistry([ExecuteCommandTool(), EchoTool()])
     loop = ToolCallLoop(
-        router=RouterApi(),
+        router=RouterApi(
+            settings=Settings(
+                credential_path=args.credential_path,
+                ollama_base_url=args.ollama_base_url,
+            )
+        ),
         registry=registry,
         provider=args.provider,
         model=model,

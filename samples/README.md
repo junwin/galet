@@ -11,6 +11,17 @@ python -m venv .venv
 .venv/bin/pip install -e .
 ```
 
+## Configuration
+
+See the root `README.md` for full details. The short version:
+
+- **API keys** — non-Ollama providers need one. Use the provider env var
+  (`OPENAI_API_KEY`, etc.), or `--credential-path` (or `GALET_CREDENTIAL_PATH`)
+  pointing at a directory of credential files such as `oaicred.json`.
+- **Ollama URL** — no key needed, but set the server address with
+  `--ollama-base-url` (or `OLLAMA_BASE_URL`). The default is
+  `http://localhost:11434/v1`.
+
 ## Scripts
 
 ### `list_sources.py`
@@ -31,11 +42,9 @@ Ollama server (`llama3.1`), which needs no API key.
 python samples/send_request.py
 python samples/send_request.py "Tell me a one-sentence joke."
 python samples/send_request.py --provider openai --model gpt-4o-mini "What is 2 + 2?"
+python samples/send_request.py --provider ollama --ollama-base-url http://localhost:11434/v1 "hi"
+python samples/send_request.py --credential-path /home/myname/credential --provider openai --model gpt-4o-mini "Tell me a one-sentence joke."
 ```
-
-Other providers require an API key. galet resolves keys from environment
-variables (`OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
-`MISTRAL_API_KEY`) or from credential files via `Settings(credential_path=...)`.
 
 ### `tool_handlers.py`
 
@@ -49,10 +58,12 @@ no API key.
 ```bash
 python samples/tool_handlers.py
 python samples/tool_handlers.py "Run 'echo hello' using execute_command and tell me what it printed"
+python samples/tool_handlers.py 
 python samples/tool_handlers.py --provider ollama --model llama3.1
 python samples/tool_handlers.py --model qwen2.5:3b --max-iterations 5 "Echo hello"
 ```
 
 CLI flags: an optional positional `prompt`, `--provider` (source name, defaults
 to `ollama`), `--model` (defaults to a sensible model for the chosen provider),
-and `--max-iterations` (tool-calling round trips, default 10).
+`--credential-path` (credential directory), `--ollama-base-url` (Ollama server
+URL), and `--max-iterations` (tool-calling round trips, default 10).
