@@ -73,19 +73,17 @@ class ExecuteCommandTool:
     def tool_def(self) -> Dict[str, Any]:
         return {
             "type": "function",
-            "function": {
-                "name": self.name(),
-                "description": "Run a shell command. This sample never executes the command and always returns a stubbed result.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "command": {
-                            "type": "string",
-                            "description": "The shell command to run.",
-                        },
+            "name": self.name(),
+            "description": "Run a shell command. This sample never executes the command and always returns a stubbed result.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "The shell command to run.",
                     },
-                    "required": ["command"],
                 },
+                "required": ["command"],
             },
         }
 
@@ -110,19 +108,17 @@ class EchoTool:
     def tool_def(self) -> Dict[str, Any]:
         return {
             "type": "function",
-            "function": {
-                "name": self.name(),
-                "description": "Echo the given text back to the caller.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "type": "string",
-                            "description": "The text to echo.",
-                        },
+            "name": self.name(),
+            "description": "Echo the given text back to the caller.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The text to echo.",
                     },
-                    "required": ["text"],
                 },
+                "required": ["text"],
             },
         }
 
@@ -177,6 +173,22 @@ class ToolCallLoop:
             return {}
         return parsed if isinstance(parsed, dict) else {}
 
+    @staticmethod
+    def _tool_calls_metadata(calls: List[ToolCall]) -> Dict[str, str]:
+        return {
+            "previous_tool_calls": json.dumps(
+                [
+                    {
+                        "call_id": call.call_id,
+                        "name": call.name,
+                        "arguments_json": call.arguments_json,
+                    }
+                    for call in calls
+                ],
+                ensure_ascii=False,
+            )
+        }
+
     def _execute_call(self, call: ToolCall) -> Any:
         try:
             handler = self._registry.get(call.name)
@@ -192,7 +204,7 @@ class ToolCallLoop:
 
         for _ in range(self._max_iterations):
             metadata = (
-                {"previous_tool_calls": previous_tool_calls}
+                self._tool_calls_metadata(previous_tool_calls)
                 if previous_tool_calls
                 else None
             )
