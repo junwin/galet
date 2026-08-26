@@ -4,20 +4,49 @@ Provider-agnostic LLM, embedding, and image generation stack.
 
 ## Lineage
 
-This package is extracted from the Lucy monorepo (`src/llm` in
-`/home/junwin/src/repos/lucy`) as described in
-`software/ai/lucy/design/llm-module-extraction.md`.
+This package is extracted from the Lucy monorepo (`src/llm`) as described in
+the Lucy design doc `software/ai/lucy/design/llm-module-extraction.md`.
 
 It is a fresh repository with no shared git history. The extracted module's
 behaviour, public interface, optional-SDK import fallbacks, and
 no-fail-on-missing-credential semantics are preserved as-is; the only
-intentional change is the configuration boundary (see `settings.py` in later
-checkpoints).
+intentional change is the configuration boundary (see `settings.py`).
 
-## Status
+## Features
 
-Scaffold only. The `src/llm` modules and their tests are moved into this
-package in subsequent checkpoints.
+- **Chat / completions** — provider-agnostic `create_response` with
+  temperature, tool calling, and response metadata. Providers: OpenAI,
+  DeepSeek, Gemini, Mistral, Ollama.
+- **Routing** — explicit `provider` argument, or automatic model-name prefix
+  routing with OpenAI fallback (`ProviderRegistry`).
+- **Tool calling** — bounded tool loop; tools own `name()`, `tool_def()`,
+  `result_schema()`, and `execute()`.
+- **Image generation** — OpenAI (`dall-e-*`, `gpt-image-*`) and Gemini
+  (`gemini-*`, `imagen-*`) backends behind a common interface.
+- **Image description** — vision-capable models describe images sent inline
+  (base64, no upload).
+- **Embeddings** — OpenAI and Mistral embedding adapters.
+- **Optional SDKs** — imports degrade gracefully when a provider SDK is not
+  installed; missing credentials never raise at import or call time.
+
+## Quick start
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -e .
+```
+
+Runnable examples live in `samples/`:
+
+| Script | What it shows |
+|---|---|
+| `samples/send_request.py` | Simple chat request (defaults to local Ollama) |
+| `samples/tool_handlers.py` | Tool-calling loop with a stubbed `execute_command` tool |
+| `samples/generate_image.py` | Image generation via OpenAI or Gemini |
+| `samples/describe_image.py` | Describe an image file with a vision model |
+| `samples/list_sources.py` | List providers and model-prefix routing |
+
+See `samples/README.md` for each script's full usage.
 
 ## Configuration
 
