@@ -12,7 +12,7 @@ except Exception:
     class _GenaiClientStub:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             class _Models:
-                def generate_images(self, *a: Any, **k: Any) -> Any:
+                def generate_content(self, *a: Any, **k: Any) -> Any:
                     return None
 
             self.models = _Models()
@@ -21,7 +21,11 @@ except Exception:
         Client = _GenaiClientStub
 
     class types:  # type: ignore
-        class GenerateImagesConfig:
+        class GenerateContentConfig:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                self.__dict__.update(kwargs)
+
+        class ImageConfig:
             def __init__(self, *args: Any, **kwargs: Any) -> None:
                 self.__dict__.update(kwargs)
 
@@ -34,10 +38,13 @@ from .settings import Settings, default_settings
 
 
 class GeminiImageGenApi(ImageGenApi):
-    """Gemini image generation via the google-genai generate_images endpoint.
+    """Gemini image generation via the google-genai generate_content endpoint.
 
-    ``quality`` is accepted for protocol compatibility with ``ImageGenApi`` but
-    is ignored, since Imagen has no equivalent parameter.
+    Uses the current image models (e.g. ``gemini-2.5-flash-image``), which
+    return images inline through ``generate_content`` with
+    ``response_modalities=["IMAGE"]``. ``quality`` is accepted for protocol
+    compatibility with ``ImageGenApi`` but is ignored, since these models have
+    no equivalent parameter. A single image is generated per call.
     """
 
     def __init__(
@@ -85,9 +92,17 @@ class GeminiImageGenApi(ImageGenApi):
         quality: str = "standard",
         n: int = 1,
     ) -> ImageGenResponse:
-        config = types.GenerateImagesConfig(
-            number_of_images=n,
-            aspect_ratio=self._size_to_aspect_ratio(size),
+        if n != 1:
+            logging.warning(
+                "GeminiImageGenApi.generate_image: n=%d requested; a single image is generated per call",
+                n,
+            )
+
+        config = types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio=self._size_to_aspect_ratio(size),
+            ),
         )
 
         logging.info(
@@ -107,9 +122,9 @@ class GeminiImageGenApi(ImageGenApi):
                 self._max_attempts,
             )
             try:
-                response = self._get_client().models.generate_images(
+                response = self._get_client().models.generate_content(
                     model=model,
-                    prompt=prompt,
+                    contents=prompt,
                     config=config,
                 )
 
@@ -149,18 +164,23 @@ class GeminiImageGenApi(ImageGenApi):
     @staticmethod
     def _to_image_results(response: Any) -> List[ImageResult]:
         results: List[ImageResult] = []
-        generated_images = getattr(response, "generated_images", None) or []
-        for generated_image in generated_images:
-            image = getattr(generated_image, "image", None)
-            b64_json = None
-            url = None
-            if image is not None:
-                image_bytes = getattr(image, "image_bytes", None)
-                if image_bytes is not None:
-                    b64_json = base64.b64encode(image_bytes).decode("utf-8")
-                url = getattr(image, "gcs_uri", None)
-            revised_prompt = getattr(generated_image, "enhanced_prompt", None)
-            results.append(
-                ImageResult(url=url, b64_json=b64_json, revised_prompt=revised_prompt)
-            )
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                inline_data = getattr(part, "inline_data", None)
+                if inline_data is not None:
+                    data = getattr(inline_data, "data", None)
+                    if data is not None:
+                        if isinstance(data, bytes):
+                            b64_json = base64.b64encode(data).decode("utf-8")
+                        else:
+                            b64_json = str(data)
+                        results.append(ImageResult(url=None, b64_json=b64_json, revised_prompt=None))
+                        continue
+                file_data = getattr(part, "file_data", None)
+                if file_data is not None:
+                    uri = getattr(file_data, "file_uri", None)
+                    results.append(ImageResult(url=uri, b64_json=None, revised_prompt=None))
         return results

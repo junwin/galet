@@ -11,20 +11,25 @@ from galet.gemini_imagegen import GeminiImageGenApi
 from galet.settings import Settings
 
 
-def _stub_generated_image(
-    *,
-    image_bytes: bytes | None = b"raw-bytes",
-    gcs_uri: str | None = None,
-    enhanced_prompt: str | None = None,
+def _stub_inline_part(
+    data: bytes | None = b"raw-bytes",
+    mime_type: str = "image/png",
 ) -> SimpleNamespace:
-    return SimpleNamespace(
-        image=SimpleNamespace(image_bytes=image_bytes, gcs_uri=gcs_uri),
-        enhanced_prompt=enhanced_prompt,
-    )
+    inline = SimpleNamespace(data=data, mime_type=mime_type)
+    return SimpleNamespace(inline_data=inline, file_data=None)
 
 
-def _stub_response(*generated_images: SimpleNamespace) -> SimpleNamespace:
-    return SimpleNamespace(generated_images=list(generated_images))
+def _stub_file_part(uri: str, mime_type: str = "image/png") -> SimpleNamespace:
+    file_data = SimpleNamespace(file_uri=uri, mime_type=mime_type)
+    return SimpleNamespace(inline_data=None, file_data=file_data)
+
+
+def _stub_candidate(*parts: SimpleNamespace) -> SimpleNamespace:
+    return SimpleNamespace(content=SimpleNamespace(parts=list(parts)))
+
+
+def _stub_response(*candidates: SimpleNamespace) -> SimpleNamespace:
+    return SimpleNamespace(candidates=list(candidates))
 
 
 def _make_api(client: MagicMock, **kwargs) -> GeminiImageGenApi:
@@ -49,165 +54,160 @@ class TestSizeToAspectRatio:
         assert GeminiImageGenApi._size_to_aspect_ratio(size) == expected
 
 
-class TestGenerateImageConfig:
-    def test_config_maps_n_and_aspect_ratio(self) -> None:
+class TestGenerateContentConfig:
+    def test_config_requests_image_modality_and_aspect_ratio(self) -> None:
         client = MagicMock()
-        client.models.generate_images.return_value = _stub_response()
+        client.models.generate_content.return_value = _stub_response()
         api = _make_api(client)
 
         api.generate_image(
-            model="imagen-3.0-generate-002",
+            model="gemini-2.5-flash-image",
             prompt="a cat",
             size="1792x1024",
-            n=3,
         )
 
-        kwargs = client.models.generate_images.call_args.kwargs
-        assert kwargs["model"] == "imagen-3.0-generate-002"
-        assert kwargs["prompt"] == "a cat"
+        kwargs = client.models.generate_content.call_args.kwargs
+        assert kwargs["model"] == "gemini-2.5-flash-image"
+        assert kwargs["contents"] == "a cat"
         config = kwargs["config"]
-        assert config.number_of_images == 3
-        assert config.aspect_ratio == "16:9"
+        assert config.response_modalities == ["IMAGE"]
+        assert config.image_config.aspect_ratio == "16:9"
 
-    def test_default_config_uses_one_image_and_square_ratio(self) -> None:
+    def test_default_config_uses_square_ratio(self) -> None:
         client = MagicMock()
-        client.models.generate_images.return_value = _stub_response()
+        client.models.generate_content.return_value = _stub_response()
         api = _make_api(client)
 
-        api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+        api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
-        config = client.models.generate_images.call_args.kwargs["config"]
-        assert config.number_of_images == 1
-        assert config.aspect_ratio == "1:1"
+        config = client.models.generate_content.call_args.kwargs["config"]
+        assert config.response_modalities == ["IMAGE"]
+        assert config.image_config.aspect_ratio == "1:1"
 
     def test_quality_accepted_but_not_mapped(self) -> None:
         client = MagicMock()
-        client.models.generate_images.return_value = _stub_response()
+        client.models.generate_content.return_value = _stub_response()
         api = _make_api(client)
 
         api.generate_image(
-            model="imagen-3.0-generate-002",
+            model="gemini-2.5-flash-image",
             prompt="a cat",
             quality="hd",
         )
 
-        config = client.models.generate_images.call_args.kwargs["config"]
-        assert config.number_of_images == 1
-        assert config.aspect_ratio == "1:1"
+        config = client.models.generate_content.call_args.kwargs["config"]
+        assert config.response_modalities == ["IMAGE"]
+        assert config.image_config.aspect_ratio == "1:1"
+
+    def test_n_above_one_still_returns_single_image(self) -> None:
+        client = MagicMock()
+        client.models.generate_content.return_value = _stub_response(
+            _stub_candidate(_stub_inline_part(data=b"raw-bytes"))
+        )
+        api = _make_api(client)
+
+        result = api.generate_image(
+            model="gemini-2.5-flash-image",
+            prompt="a cat",
+            n=3,
+        )
+
+        assert len(result.images) == 1
 
 
 class TestGenerateImageMapping:
-    def test_b64_json_from_image_bytes(self) -> None:
+    def test_b64_json_from_inline_bytes(self) -> None:
         raw = b"\x89PNG\r\n\x1a\n"
-        response = _stub_response(
-            _stub_generated_image(image_bytes=raw, gcs_uri=None)
-        )
+        response = _stub_response(_stub_candidate(_stub_inline_part(data=raw)))
         client = MagicMock()
-        client.models.generate_images.return_value = response
+        client.models.generate_content.return_value = response
         api = _make_api(client)
 
-        result = api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+        result = api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
         assert len(result.images) == 1
         assert result.images[0].b64_json == base64.b64encode(raw).decode("utf-8")
         assert result.images[0].url is None
         assert result.images[0].revised_prompt is None
-        assert result.model == "imagen-3.0-generate-002"
+        assert result.model == "gemini-2.5-flash-image"
         assert result.raw is response
 
-    def test_url_from_gcs_uri(self) -> None:
-        response = _stub_response(
-            _stub_generated_image(image_bytes=None, gcs_uri="gs://bucket/img.png")
-        )
+    def test_url_from_file_data(self) -> None:
+        response = _stub_response(_stub_candidate(_stub_file_part("gs://bucket/img.png")))
         client = MagicMock()
-        client.models.generate_images.return_value = response
+        client.models.generate_content.return_value = response
         api = _make_api(client)
 
-        result = api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+        result = api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
         assert result.images[0].url == "gs://bucket/img.png"
         assert result.images[0].b64_json is None
 
-    def test_revised_prompt_from_enhanced_prompt(self) -> None:
+    def test_multiple_parts_mapped_in_order(self) -> None:
         response = _stub_response(
-            _stub_generated_image(
-                image_bytes=b"x",
-                gcs_uri=None,
-                enhanced_prompt="A majestic cat on a windowsill",
+            _stub_candidate(
+                _stub_inline_part(data=b"a"),
+                _stub_file_part("gs://bucket/1.png"),
             )
         )
         client = MagicMock()
-        client.models.generate_images.return_value = response
+        client.models.generate_content.return_value = response
         api = _make_api(client)
 
-        result = api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
-
-        assert result.images[0].revised_prompt == "A majestic cat on a windowsill"
-
-    def test_multiple_images_mapped_in_order(self) -> None:
-        response = _stub_response(
-            _stub_generated_image(
-                image_bytes=b"a",
-                gcs_uri="gs://bucket/1.png",
-                enhanced_prompt="first",
-            ),
-            _stub_generated_image(
-                image_bytes=b"b",
-                gcs_uri=None,
-                enhanced_prompt=None,
-            ),
-        )
-        client = MagicMock()
-        client.models.generate_images.return_value = response
-        api = _make_api(client)
-
-        result = api.generate_image(model="imagen-3.0-generate-002", prompt="a cat", n=2)
+        result = api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
         assert len(result.images) == 2
         assert result.images[0].b64_json == base64.b64encode(b"a").decode("utf-8")
-        assert result.images[0].url == "gs://bucket/1.png"
-        assert result.images[0].revised_prompt == "first"
-        assert result.images[1].b64_json == base64.b64encode(b"b").decode("utf-8")
-        assert result.images[1].url is None
-        assert result.images[1].revised_prompt is None
+        assert result.images[0].url is None
+        assert result.images[1].url == "gs://bucket/1.png"
+        assert result.images[1].b64_json is None
+
+    def test_empty_candidates_yields_no_images(self) -> None:
+        client = MagicMock()
+        client.models.generate_content.return_value = _stub_response()
+        api = _make_api(client)
+
+        result = api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
+
+        assert result.images == []
 
 
 class TestGenerateImageRetry:
     def test_retries_then_succeeds(self) -> None:
         client = MagicMock()
-        ok = _stub_response(_stub_generated_image())
-        client.models.generate_images.side_effect = [ValueError("boom"), ok]
+        ok = _stub_response(_stub_candidate(_stub_inline_part()))
+        client.models.generate_content.side_effect = [ValueError("boom"), ok]
         api = _make_api(client, max_attempts=3, backoff_base=0.01, backoff_cap=0.02)
 
         with patch("galet.gemini_imagegen._sleep_backoff") as mock_sleep:
-            result = api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+            result = api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
-        assert client.models.generate_images.call_count == 2
+        assert client.models.generate_content.call_count == 2
         mock_sleep.assert_called_once_with(0, 0.01, 0.02)
         assert len(result.images) == 1
 
     def test_exhausted_retries_raise_last_error(self) -> None:
         client = MagicMock()
-        client.models.generate_images.side_effect = ValueError("API failed")
+        client.models.generate_content.side_effect = ValueError("API failed")
         api = _make_api(client, max_attempts=2, backoff_base=0.01, backoff_cap=0.02)
 
         with patch("galet.gemini_imagegen._sleep_backoff"):
             with pytest.raises(ValueError, match="API failed"):
-                api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+                api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
-        assert client.models.generate_images.call_count == 2
+        assert client.models.generate_content.call_count == 2
 
     def test_sleep_backoff_called_between_attempts(self) -> None:
         client = MagicMock()
-        client.models.generate_images.side_effect = [
+        client.models.generate_content.side_effect = [
             ValueError("boom"),
             ValueError("boom again"),
-            _stub_response(_stub_generated_image()),
+            _stub_response(_stub_candidate(_stub_inline_part())),
         ]
         api = _make_api(client, max_attempts=3, backoff_base=0.01, backoff_cap=0.02)
 
         with patch("galet.gemini_imagegen._sleep_backoff") as mock_sleep:
-            api.generate_image(model="imagen-3.0-generate-002", prompt="a cat")
+            api.generate_image(model="gemini-2.5-flash-image", prompt="a cat")
 
         assert mock_sleep.call_count == 2
         assert mock_sleep.call_args_list[0].args == (0, 0.01, 0.02)

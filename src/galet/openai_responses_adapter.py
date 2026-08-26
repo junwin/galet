@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from .adapter_interface import LLMAdapter
+from .dto import LLMUsage
 from .interface import LLMApi
 from .tool_output import format_tool_output
 
@@ -92,3 +93,6 @@ class OpenAIResponsesAdapter(LLMAdapter):
     def get_response_id(self, response: Any) -> Optional[str]:
         rid = getattr(response, "response_id", None)
         return str(rid) if rid else None
+
+    def get_usage(self, response: Any) -> Optional[LLMUsage]:
+        return getattr(response, "usage", None)

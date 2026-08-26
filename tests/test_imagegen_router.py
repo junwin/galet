@@ -50,6 +50,18 @@ class TestImageGenRouterDispatch:
             n=1,
         )
 
+    def test_gpt_image_model_dispatched_to_openai(self) -> None:
+        openai = make_mock_api()
+        router = ImageGenRouter(openai_api=openai)
+        router.generate_image(model="gpt-image-1", prompt="dog")
+        openai.generate_image.assert_called_once_with(
+            model="gpt-image-1",
+            prompt="dog",
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+
     def test_gemini_model_dispatched_to_gemini(self) -> None:
         openai = make_mock_api()
         gemini = make_mock_api(ImageGenResponse(images=[ImageResult(url="http://g")]))

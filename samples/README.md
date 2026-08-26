@@ -58,7 +58,6 @@ no API key.
 ```bash
 python samples/tool_handlers.py
 python samples/tool_handlers.py "Run 'echo hello' using execute_command and tell me what it printed"
-python samples/tool_handlers.py 
 python samples/tool_handlers.py --provider ollama --model llama3.1
 python samples/tool_handlers.py --model qwen2.5:3b --max-iterations 5 "Echo hello"
 ```
@@ -67,3 +66,36 @@ CLI flags: an optional positional `prompt`, `--provider` (source name, defaults
 to `ollama`), `--model` (defaults to a sensible model for the chosen provider),
 `--credential-path` (credential directory), `--ollama-base-url` (Ollama server
 URL), and `--max-iterations` (tool-calling round trips, default 10).
+
+### `generate_image.py`
+
+Asks an image generation model to create an image and prints the result. By
+default it uses OpenAI `gpt-image-1`; the model name decides the backend
+(`dall-e-*` / `gpt-image-*` / `openai/*` go to OpenAI, `gemini-*` / `imagen-*`
+go to Gemini). Pass `--out` to save the first generated image to a file.
+
+```bash
+python samples/generate_image.py "a red panda in a spacesuit"
+python samples/generate_image.py --size 1536x1024 --quality high "a wide landscape"
+python samples/generate_image.py --model gpt-image-1 --out /tmp/panda.png "a red panda"
+python samples/generate_image.py --model gemini-2.5-flash-image --out /tmp/panda.png "a red panda"
+python samples/generate_image.py --credential-path /home/myname/credential "a red panda"
+```
+
+Quality values: dall-e models accept `standard`/`hd`; gpt-image models accept
+`low`/`medium`/`high`/`auto` (legacy `standard`/`hd` are mapped for you). Gemini
+image models ignore quality, and gpt-image models only support `n=1`.
+
+### `describe_image.py`
+
+Sends an image file to a vision-capable model and prints its description. The
+image is base64-encoded and sent inline (no upload). By default it uses OpenAI
+`gpt-4o-mini`.
+
+```bash
+python samples/describe_image.py path/to/image.png
+python samples/describe_image.py --prompt "What animals are in this photo?" path/to/image.png
+python samples/describe_image.py --model gpt-4o path/to/image.jpg
+python samples/describe_image.py --provider gemini --model gemini-2.0-flash path/to/image.png
+python samples/describe_image.py --credential-path /home/myname/credential path/to/image.png
+```
