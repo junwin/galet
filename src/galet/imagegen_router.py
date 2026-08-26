@@ -29,7 +29,11 @@ class ImageGenRouter(ImageGenApi):
         quality: str = "standard",
         n: int = 1,
     ) -> ImageGenResponse:
-        if model.startswith("openai") or model.startswith("dall-e"):
+        if (
+            model.startswith("openai")
+            or model.startswith("dall-e")
+            or model.startswith("gpt-image")
+        ):
             return self._openai.generate_image(
                 model=model,
                 prompt=prompt,

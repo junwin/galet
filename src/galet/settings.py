@@ -32,20 +32,26 @@ class Settings:
     credential_path: Optional[str] = None
     ollama_base_url: Optional[str] = None
 
+    def _resolved_credential_path(self) -> Optional[str]:
+        if self.credential_path:
+            return self.credential_path
+        return os.environ.get("GALET_CREDENTIAL_PATH")
+
     def api_key(self, provider: str) -> Optional[str]:
         env_var = _PROVIDER_ENV_VAR.get(provider)
         if env_var:
             value = os.environ.get(env_var)
             if value:
                 return value
-        if not self.credential_path:
+        credential_path = self._resolved_credential_path()
+        if not credential_path:
             return None
         file_name = _PROVIDER_CREDENTIAL_FILE.get(provider)
         keys = _PROVIDER_CREDENTIAL_KEY.get(provider)
         if not file_name or not keys:
             return None
         try:
-            with open(os.path.join(self.credential_path, file_name), "r", encoding="utf-8") as f:
+            with open(os.path.join(credential_path, file_name), "r", encoding="utf-8") as f:
                 data = json.load(f)
         except (OSError, ValueError):
             return None
@@ -58,10 +64,9 @@ class Settings:
         return None
 
     def base_url(self) -> Optional[str]:
-        url = os.environ.get("OLLAMA_BASE_URL")
-        if url:
-            return url
-        return self.ollama_base_url
+        if self.ollama_base_url:
+            return self.ollama_base_url
+        return os.environ.get("OLLAMA_BASE_URL")
 
 
 default_settings = Settings()

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Protocol
 
+from .dto import LLMUsage
+
 
 class LLMAdapter(Protocol):
     """Protocol glue between the FunctionCallingProcessor and a specific LLM API.
@@ -47,3 +49,5 @@ class LLMAdapter(Protocol):
     def get_text(self, response: Any) -> str: ...
 
     def get_response_id(self, response: Any) -> Optional[str]: ...
+
+    def get_usage(self, response: Any) -> Optional[LLMUsage]: ...
