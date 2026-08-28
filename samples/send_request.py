@@ -8,6 +8,9 @@ Run from the repo root:
     # Any provider, with an explicit model
     python samples/send_request.py --provider openai --model gpt-4o-mini "What is 2 + 2?"
 
+    # Provider inferred from the model name (--provider omitted)
+    python samples/send_request.py --model mistral-large-latest "Tell me a one-sentence joke."
+
     # Point galet at a directory holding credential files
     python samples/send_request.py --credential-path /path/to/credentials --provider openai "What is 2 + 2?"
 
@@ -25,6 +28,10 @@ Provider sources and their default models:
     mistral  -> mistral-small-latest
     ollama   -> llama3.1
 
+When ``--provider`` is omitted it is inferred from the model name (mistral-*,
+deepseek-*, gemini-*, gpt-*/o1*/o3* map to their providers). With no
+``--model`` and no ``--provider`` the request defaults to local Ollama.
+
 Non-Ollama providers need an API key. galet reads keys from environment
 variables (OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY),
 from credential files via ``Settings(credential_path=...)``, or from the
@@ -40,7 +47,9 @@ default ``http://localhost:11434/v1``.
 from __future__ import annotations
 
 import argparse
+from typing import Optional
 
+from galet.provider_registry import ProviderRegistry
 from galet.router_api import RouterApi
 from galet.settings import Settings
 
@@ -51,6 +60,14 @@ DEFAULT_MODELS = {
     "mistral": "mistral-small-latest",
     "ollama": "llama3.1",
 }
+
+
+def resolve_provider(model: Optional[str], explicit_provider: Optional[str]) -> str:
+    if explicit_provider:
+        return explicit_provider
+    if model:
+        return ProviderRegistry.resolve_name(model, None)
+    return "ollama"
 
 
 def main() -> None:
@@ -65,8 +82,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--provider",
-        default="ollama",
-        help="Provider source name: openai, deepseek, gemini, mistral, or ollama.",
+        default=None,
+        help="Provider source name: openai, deepseek, gemini, mistral, or ollama. "
+        "Inferred from the model name when omitted; defaults to ollama.",
     )
     parser.add_argument(
         "--model",
@@ -87,7 +105,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    model = args.model or DEFAULT_MODELS.get(args.provider, "gpt-4o-mini")
+    provider = resolve_provider(args.model, args.provider)
+    model = args.model or DEFAULT_MODELS.get(provider, "gpt-4o-mini")
 
     settings = Settings(
         credential_path=args.credential_path,
@@ -97,11 +116,11 @@ def main() -> None:
     response = router.create_response(
         model=model,
         input=[{"role": "user", "content": args.prompt}],
-        provider=args.provider,
+        provider=provider,
     )
 
     print()
-    print(f"Provider : {args.provider}")
+    print(f"Provider : {provider}")
     print(f"Model    : {model}")
     print(f"Prompt   : {args.prompt}")
     print(f"Answer   : {response.output_text}")
