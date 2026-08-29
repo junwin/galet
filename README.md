@@ -18,7 +18,8 @@ intentional change is the configuration boundary (see `settings.py`).
   temperature, tool calling, and response metadata. Providers: OpenAI,
   DeepSeek, Gemini, Mistral, Ollama.
 - **Routing** — explicit `provider` argument, or automatic model-name prefix
-  routing with OpenAI fallback (`ProviderRegistry`).
+  routing with OpenAI fallback. Connectors self-register their name,
+  model-name prefixes, and default model with `ProviderRegistry`.
 - **Tool calling** — bounded tool loop; tools own `name()`, `tool_def()`,
   `result_schema()`, and `execute()`.
 - **Image generation** — OpenAI (`dall-e-*`, `gpt-image-*`) and Gemini

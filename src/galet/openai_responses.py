@@ -367,3 +367,16 @@ class OpenAIResponsesApi(LLMApi):
 
         # Should be unreachable
         raise RuntimeError("OpenAIResponsesApi: exhausted retries unexpectedly") from last_err
+
+from .provider_info import ProviderInfo, register_provider
+
+register_provider(
+    ProviderInfo(
+        name="openai",
+        display_name="OpenAI",
+        description="OpenAI Responses API for GPT and o-series models.",
+        prefixes=("gpt", "o1", "o3"),
+        class_path="galet.openai_responses.OpenAIResponsesApi",
+        default_model="gpt-4o-mini",
+    )
+)

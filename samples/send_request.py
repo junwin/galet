@@ -49,17 +49,14 @@ from __future__ import annotations
 import argparse
 from typing import Optional
 
+from galet.provider_info import registered_providers
 from galet.provider_registry import ProviderRegistry
 from galet.router_api import RouterApi
 from galet.settings import Settings
 
-DEFAULT_MODELS = {
-    "openai": "gpt-4o-mini",
-    "deepseek": "deepseek-chat",
-    "gemini": "gemini-2.0-flash",
-    "mistral": "mistral-small-latest",
-    "ollama": "llama3.1",
-}
+ProviderRegistry.load_all()
+
+DEFAULT_MODELS = {info.name: info.default_model for info in registered_providers()}
 
 
 def resolve_provider(model: Optional[str], explicit_provider: Optional[str]) -> str:
