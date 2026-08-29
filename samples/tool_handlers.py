@@ -6,6 +6,10 @@ Run from the repo root:
 
     python samples/tool_handlers.py "Use the execute_command tool to run 'echo hello'"
 
+    python samples/tool_handlers.py "Use the file_load tool to read 'README.md'"
+
+    python samples/tool_handlers.py "Use the file_save tool to write a greeting"
+
     python samples/tool_handlers.py --provider ollama --model llama3.1 "Echo hello"
 
     python samples/tool_handlers.py --credential-path /path/to/credentials --provider openai "Echo hello"
@@ -28,7 +32,8 @@ Each tool is a handler that exposes name(), tool_def(), result_schema(), and
 execute(). The loop sends the prompt with the tool definitions, executes any
 tool calls the model returns, feeds the formatted results back, and repeats
 until the model answers without requesting a tool or the iteration cap is
-reached.
+reached. The file_load and file_save tools are stubbed: they describe their
+schema and return a fixed result without touching the filesystem.
 """
 
 from __future__ import annotations
@@ -53,6 +58,16 @@ DEFAULT_MODELS = {
 STUBBED_COMMAND_RESULT = {
     "status": "stubbed",
     "output": "command execution is disabled in this sample",
+}
+
+STUBBED_FILE_LOAD_RESULT = {
+    "status": "stubbed",
+    "content": "file loading is disabled in this sample",
+}
+
+STUBBED_FILE_SAVE_RESULT = {
+    "status": "stubbed",
+    "message": "file saving is disabled in this sample",
 }
 
 
@@ -99,6 +114,80 @@ class ExecuteCommandTool:
 
     def execute(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         return dict(STUBBED_COMMAND_RESULT)
+
+
+class FileLoadTool:
+    def name(self) -> str:
+        return "file_load"
+
+    def tool_def(self) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "name": self.name(),
+            "description": "Read a file from disk. This sample never reads the file and always returns a stubbed result.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to read.",
+                    },
+                },
+                "required": ["path"],
+            },
+        }
+
+    def result_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "content": {"type": "string"},
+            },
+            "required": ["status", "content"],
+        }
+
+    def execute(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        return dict(STUBBED_FILE_LOAD_RESULT)
+
+
+class FileSaveTool:
+    def name(self) -> str:
+        return "file_save"
+
+    def tool_def(self) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "name": self.name(),
+            "description": "Write a file to disk. This sample never writes the file and always returns a stubbed result.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path of the file to write.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Content to write.",
+                    },
+                },
+                "required": ["path", "content"],
+            },
+        }
+
+    def result_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "message": {"type": "string"},
+            },
+            "required": ["status", "message"],
+        }
+
+    def execute(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        return dict(STUBBED_FILE_SAVE_RESULT)
 
 
 class EchoTool:
@@ -278,7 +367,7 @@ def main() -> None:
 
     model = args.model or DEFAULT_MODELS.get(args.provider, "llama3.1")
 
-    registry = ToolRegistry([ExecuteCommandTool(), EchoTool()])
+    registry = ToolRegistry([ExecuteCommandTool(), FileLoadTool(), FileSaveTool(), EchoTool()])
     loop = ToolCallLoop(
         router=RouterApi(
             settings=Settings(
