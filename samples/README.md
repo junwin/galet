@@ -44,6 +44,7 @@ python samples/send_request.py "Tell me a one-sentence joke."
 python samples/send_request.py --provider openai --model gpt-4o-mini "What is 2 + 2?"
 python samples/send_request.py --provider ollama --ollama-base-url http://localhost:11434/v1 "hi"
 python samples/send_request.py --credential-path /home/myname/credential --provider openai --model gpt-4o-mini "Tell me a one-sentence joke."
+python samples/send_request.py --credential-path /home/myname/credential --model mistral-large-latest "Tell me a one-sentence joke."
 ```
 
 ### `tool_handlers.py`
@@ -51,13 +52,16 @@ python samples/send_request.py --credential-path /home/myname/credential --provi
 Demonstrates the tool-handler pattern: each tool owns `name()`, `tool_def()`,
 `result_schema()`, and `execute()`, and a bounded loop feeds tool results back
 to the model until it answers without calling a tool or the iteration cap is
-reached. The `execute_command` tool is stubbed — it never runs a real shell
-command. By default it targets a local Ollama server (`llama3.1`), which needs
-no API key.
+reached. Three tools are defined: `execute_command` (run a shell command),
+`file_load` (read a file), and `file_save` (write a file) — all are stubbed
+and never touch the real shell or filesystem. By default it targets a local
+Ollama server (`llama3.1`), which needs no API key.
 
 ```bash
 python samples/tool_handlers.py
 python samples/tool_handlers.py "Run 'echo hello' using execute_command and tell me what it printed"
+python samples/tool_handlers.py "Use file_load to read README.md and tell me what it says"
+python samples/tool_handlers.py "Use file_save to write a greeting to greeting.txt"
 python samples/tool_handlers.py --provider ollama --model llama3.1
 python samples/tool_handlers.py --model qwen2.5:3b --max-iterations 5 "Echo hello"
 ```
