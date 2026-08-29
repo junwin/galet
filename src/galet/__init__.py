@@ -1,6 +1,7 @@
 from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .adapter_interface import LLMAdapter
+from .provider_info import ProviderInfo, get_provider, register_provider, registered_providers
 
 try:
     from .openai_responses import OpenAIResponsesApi
@@ -34,6 +35,10 @@ __all__ = [
     "LLMResponse",
     "LLMUsage",
     "ToolCall",
+    "ProviderInfo",
+    "get_provider",
+    "register_provider",
+    "registered_providers",
     "OpenAIResponsesApi",
     "OpenAIResponsesAdapter",
     "MistralApi",

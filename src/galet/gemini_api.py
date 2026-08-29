@@ -352,3 +352,16 @@ class GeminiApi(LLMApi):
         if last_err is not None:
             raise last_err
         raise RuntimeError("GeminiApi: exhausted retries unexpectedly")
+
+from .provider_info import ProviderInfo, register_provider
+
+register_provider(
+    ProviderInfo(
+        name="gemini",
+        display_name="Google Gemini",
+        description="Google Gemini API for text and multimodal models.",
+        prefixes=("gemini",),
+        class_path="galet.gemini_api.GeminiApi",
+        default_model="gemini-2.0-flash",
+    )
+)

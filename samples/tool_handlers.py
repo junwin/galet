@@ -43,17 +43,15 @@ import json
 from typing import Any, Dict, List, Optional, Protocol
 
 from galet.dto import ToolCall
+from galet.provider_info import registered_providers
+from galet.provider_registry import ProviderRegistry
 from galet.router_api import RouterApi
 from galet.settings import Settings
 from galet.tool_output import format_tool_output
 
-DEFAULT_MODELS = {
-    "openai": "gpt-4o-mini",
-    "deepseek": "deepseek-chat",
-    "gemini": "gemini-2.0-flash",
-    "mistral": "mistral-small-latest",
-    "ollama": "llama3.1",
-}
+ProviderRegistry.load_all()
+
+DEFAULT_MODELS = {info.name: info.default_model for info in registered_providers()}
 
 STUBBED_COMMAND_RESULT = {
     "status": "stubbed",
