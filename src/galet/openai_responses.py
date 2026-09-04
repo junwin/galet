@@ -132,6 +132,28 @@ def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
     time.sleep(delay)
 
 
+_GPT6_UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
+
+
+def _is_gpt6_model(model: str) -> bool:
+    return model.startswith("gpt-6")
+
+
+def _sanitize_generation_params(model: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = dict(params)
+    if not _is_gpt6_model(model):
+        return sanitized
+    for name in _GPT6_UNSUPPORTED_SAMPLING_PARAMS:
+        if name in sanitized and sanitized[name] is not None:
+            logging.warning(
+                "OpenAIResponsesApi: dropping unsupported sampling param %s for model %s",
+                name,
+                model,
+            )
+            del sanitized[name]
+    return sanitized
+
+
 class OpenAIResponsesApi(LLMApi):
     """OpenAI Responses API implementation.
 
@@ -263,6 +285,21 @@ class OpenAIResponsesApi(LLMApi):
             store,
         )
 
+        request_params: Dict[str, Any] = {
+            "model": model,
+            "input": input,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "store": store,
+            "metadata": metadata,
+            "previous_response_id": previous_response_id,
+            "text": text,
+        }
+        if temperature is not None:
+            request_params["temperature"] = temperature
+
+        request_params = _sanitize_generation_params(model, request_params)
+
         for attempt in range(self._max_attempts):
             t0 = time.time()
             logging.info(
@@ -272,17 +309,7 @@ class OpenAIResponsesApi(LLMApi):
             )
 
             try:
-                resp = self._get_client().responses.create(
-                    model=model,
-                    input=input,
-                    temperature=temperature,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                    store=store,
-                    metadata=metadata,
-                    previous_response_id=previous_response_id,
-                    text=text,
-                )
+                resp = self._get_client().responses.create(**request_params)
 
                 elapsed = time.time() - t0
 
