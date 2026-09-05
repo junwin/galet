@@ -124,7 +124,6 @@ def _extract_tool_calls(resp: Any) -> List[ToolCall]:
     return calls
 
 
-
 def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
     """Exponential backoff with jitter."""
     delay = min(cap, base * (2**attempt))
@@ -138,25 +137,32 @@ def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
 # (gpt-4o, gpt-4.1, gpt-4.5) and non-GPT ids (o1, o3) still accept them.
 _UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
 _MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS = 5
-_GPT_MODEL_GENERATION_RE = re.compile(r"^gpt-(\d+)", re.IGNORECASE)
+
+# Matches "gpt-<generation>" at the start of a model id. After the digits we
+# require end-of-string, a "." or "-" variant suffix, or the glued "o" of the
+# gpt-4o family, so malformed prefixes such as "gpt-5x" are not classified.
+_GPT_MODEL_GENERATION_RE = re.compile(r"^gpt-(\d+)(?=$|[.\-]|o)", re.IGNORECASE)
 
 
 def _gpt_major_generation(model: str) -> Optional[int]:
-    """Return the major GPT generation for an OpenAI model id.
+    """Return the major GPT generation for a well-formed GPT model id.
 
     Examples: ``gpt-4o`` -> 4, ``gpt-5-mini`` -> 5, ``gpt-6-astra`` -> 6.
-    Returns None for ids that are not GPT family ids (``o1``, ``o3``, ...).
+
+    Returns None for ids that are not GPT family ids (``o1``, ``o3``) and for
+    ids whose GPT prefix is malformed (``gpt-5x``, ``gpt5``, ``gpt-``).
     """
     match = _GPT_MODEL_GENERATION_RE.match(model.strip())
     return int(match.group(1)) if match else None
 
 
 def _sampling_params_supported(model: str) -> bool:
-    """Capability rule: does this model accept sampling params on the Responses API?
+    """Return True when ``model`` accepts sampling params on the Responses API.
 
     GPT-5 and later do not support temperature / top_p / top_logprobs. Every
     other id (GPT-4 and earlier, o-series, unknown ids) keeps today's
-    pass-through behaviour.
+    pass-through behaviour. Malformed GPT prefixes are treated like unknown
+    ids and therefore pass through as well.
     """
     generation = _gpt_major_generation(model)
     if generation is None:
@@ -176,7 +182,8 @@ def _sanitize_generation_params(model: str, params: Dict[str, Any]) -> Dict[str,
     for name in _UNSUPPORTED_SAMPLING_PARAMS:
         if name in sanitized and sanitized[name] is not None:
             logging.warning(
-                "OpenAIResponsesApi: dropping unsupported sampling param %s for model %s",
+                "OpenAIResponsesApi: dropping unsupported sampling param "
+                "%s for model %s",
                 name,
                 model,
             )
