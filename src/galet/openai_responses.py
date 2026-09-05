@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -132,18 +133,47 @@ def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
     time.sleep(delay)
 
 
-_GPT6_UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
+# The OpenAI Responses API rejects these sampling params for GPT-5 and later
+# model ids (HTTP 400 "unsupported parameter"). GPT-4 and earlier ids
+# (gpt-4o, gpt-4.1, gpt-4.5) and non-GPT ids (o1, o3) still accept them.
+_UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
+_MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS = 5
+_GPT_MODEL_GENERATION_RE = re.compile(r"^gpt-(\d+)", re.IGNORECASE)
 
 
-def _is_gpt6_model(model: str) -> bool:
-    return model.startswith("gpt-6")
+def _gpt_major_generation(model: str) -> Optional[int]:
+    """Return the major GPT generation for an OpenAI model id.
+
+    Examples: ``gpt-4o`` -> 4, ``gpt-5-mini`` -> 5, ``gpt-6-astra`` -> 6.
+    Returns None for ids that are not GPT family ids (``o1``, ``o3``, ...).
+    """
+    match = _GPT_MODEL_GENERATION_RE.match(model.strip())
+    return int(match.group(1)) if match else None
+
+
+def _sampling_params_supported(model: str) -> bool:
+    """Capability rule: does this model accept sampling params on the Responses API?
+
+    GPT-5 and later do not support temperature / top_p / top_logprobs. Every
+    other id (GPT-4 and earlier, o-series, unknown ids) keeps today's
+    pass-through behaviour.
+    """
+    generation = _gpt_major_generation(model)
+    if generation is None:
+        return True
+    return generation < _MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS
 
 
 def _sanitize_generation_params(model: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop the sampling params unsupported by ``model``; never mutate ``params``.
+
+    Returns a new dict. Every dropped param is logged as a warning; all other
+    params and models pass through unchanged.
+    """
     sanitized = dict(params)
-    if not _is_gpt6_model(model):
+    if _sampling_params_supported(model):
         return sanitized
-    for name in _GPT6_UNSUPPORTED_SAMPLING_PARAMS:
+    for name in _UNSUPPORTED_SAMPLING_PARAMS:
         if name in sanitized and sanitized[name] is not None:
             logging.warning(
                 "OpenAIResponsesApi: dropping unsupported sampling param %s for model %s",

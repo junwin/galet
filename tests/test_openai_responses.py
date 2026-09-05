@@ -9,8 +9,8 @@ import pytest
 from galet.dto import LLMResponse
 from galet.openai_responses import (
     OpenAIResponsesApi,
-    _GPT6_UNSUPPORTED_SAMPLING_PARAMS,
-    _is_gpt6_model,
+    _UNSUPPORTED_SAMPLING_PARAMS,
+    _sampling_params_supported,
     _sanitize_generation_params,
 )
 
@@ -38,17 +38,45 @@ class FakeClient:
         self.responses = FakeResponses()
 
 
-class TestGpt6ModelCapability:
-    @pytest.mark.parametrize("model", ["gpt-6", "gpt-6-astra", "gpt-6-mini"])
-    def test_gpt6_prefix_models_lack_sampling_params(self, model: str) -> None:
-        assert _is_gpt6_model(model) is True
+class TestSamplingParamsCapabilityRule:
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5.1",
+            "GPT-5",  # rule is case-insensitive
+            "gpt-6",
+            "gpt-6-astra",
+            "gpt-6-mini",
+            "gpt-7",
+            "gpt-9",  # any future generation stays covered
+        ],
+    )
+    def test_gpt5_and_later_lack_sampling_params(self, model: str) -> None:
+        assert _sampling_params_supported(model) is False
 
-    @pytest.mark.parametrize("model", ["gpt-5", "gpt-4o", "gpt-4.1", "o3"])
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gpt-4",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "gpt-4.1",
+            "gpt-4.5",
+            "gpt-4.5-preview",
+            "chatgpt-4o-latest",
+            "o1",
+            "o3",
+            "o4-mini",
+            "custom-unknown-id",
+        ],
+    )
     def test_other_models_keep_sampling_params(self, model: str) -> None:
-        assert _is_gpt6_model(model) is False
+        assert _sampling_params_supported(model) is True
 
     def test_unsupported_sampling_params_are_known(self) -> None:
-        assert set(_GPT6_UNSUPPORTED_SAMPLING_PARAMS) == {
+        assert set(_UNSUPPORTED_SAMPLING_PARAMS) == {
             "temperature",
             "top_p",
             "top_logprobs",
@@ -65,8 +93,8 @@ class TestSanitizeGenerationParams:
             "metadata": {"session": "abc"},
         }
 
-    @pytest.mark.parametrize("model", ["gpt-6", "gpt-6-astra"])
-    def test_drops_sampling_params_and_logs_for_gpt6(
+    @pytest.mark.parametrize("model", ["gpt-5", "gpt-5-mini", "gpt-6-astra"])
+    def test_drops_sampling_params_and_logs_for_gpt5_and_later(
         self, model: str, caplog: pytest.LogCaptureFixture
     ) -> None:
         with caplog.at_level(logging.WARNING):
@@ -82,7 +110,7 @@ class TestSanitizeGenerationParams:
                 in caplog.text
             )
 
-    @pytest.mark.parametrize("model", ["gpt-5", "gpt-4o", "gpt-4.1"])
+    @pytest.mark.parametrize("model", ["gpt-4", "gpt-4o", "gpt-4.1", "gpt-4.5", "o3"])
     def test_keeps_sampling_params_and_logs_nothing_for_other_models(
         self, model: str, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -100,23 +128,24 @@ class TestSanitizeGenerationParams:
 
 
 class TestCreateResponseGenerationParams:
-    def test_gpt6_astra_request_omits_all_sampling_param_keys(self) -> None:
+    @pytest.mark.parametrize("model", ["gpt-5", "gpt-5-mini", "gpt-6-astra"])
+    def test_gpt5_and_later_requests_omit_sampling_params(self, model: str) -> None:
         client = FakeClient()
         api = OpenAIResponsesApi(client=client, max_attempts=1)
-        result = api.create_response(model="gpt-6-astra", input="hi", temperature=0.0)
+        result = api.create_response(model=model, input="hi", temperature=0.0)
 
         assert len(client.responses.calls) == 1
         kwargs = client.responses.calls[0]
         assert "temperature" not in kwargs
         assert "top_p" not in kwargs
         assert "top_logprobs" not in kwargs
-        assert kwargs["model"] == "gpt-6-astra"
+        assert kwargs["model"] == model
         assert kwargs["input"] == "hi"
         assert isinstance(result, LLMResponse)
-        assert result.model == "gpt-6-astra"
+        assert result.model == model
         assert result.output_text == "hello world"
 
-    @pytest.mark.parametrize("model", ["gpt-5", "gpt-4o", "gpt-4.1"])
+    @pytest.mark.parametrize("model", ["gpt-4", "gpt-4o", "gpt-4.1", "gpt-4.5", "o3"])
     def test_supported_models_still_carry_temperature(self, model: str) -> None:
         client = FakeClient()
         api = OpenAIResponsesApi(client=client)
@@ -129,7 +158,7 @@ class TestCreateResponseGenerationParams:
         assert result.model == model
         assert result.output_text == "hello world"
 
-    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-5", "gpt-4o"])
+    @pytest.mark.parametrize("model", ["gpt-5", "gpt-6-astra", "gpt-4o", "o3"])
     def test_temperature_none_never_adds_key(self, model: str) -> None:
         client = FakeClient()
         api = OpenAIResponsesApi(client=client)
