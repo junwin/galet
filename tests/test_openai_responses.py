@@ -11,6 +11,7 @@ from galet.openai_responses import (
     OpenAIResponsesApi,
     _UNSUPPORTED_SAMPLING_PARAMS,
     _gpt_major_generation,
+    _prompt_cache_options_supported,
     _sampling_params_supported,
     _sanitize_generation_params,
 )
@@ -81,6 +82,41 @@ class TestGptMajorGeneration:
     )
     def test_rejects_malformed_and_non_gpt_prefixes(self, model: str) -> None:
         assert _gpt_major_generation(model) is None
+
+
+class TestPromptCacheOptionsCapabilityRule:
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gpt-5.6",
+            "gpt-5.6-luna",
+            "gpt-5.7",
+            "gpt-6",
+            "gpt-6-astra",
+            "GPT-6-ASTRA",
+            "gpt-7",
+        ],
+    )
+    def test_gpt56_and_later_support_prompt_cache_options(self, model: str) -> None:
+        assert _prompt_cache_options_supported(model) is True
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gpt-4o",
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5.1",
+            "gpt-5.5",
+            "o3",
+            "custom-unknown-id",
+            "gpt-5x",
+        ],
+    )
+    def test_older_and_unknown_models_do_not_get_prompt_cache_options(
+        self, model: str
+    ) -> None:
+        assert _prompt_cache_options_supported(model) is False
 
 
 class TestSamplingParamsCapabilityRule:
@@ -244,3 +280,23 @@ class TestCreateResponseGenerationParams:
 
         kwargs = client.responses.calls[0]
         assert "temperature" not in kwargs
+
+
+class TestCreateResponsePromptCacheOptions:
+    @pytest.mark.parametrize("model", ["gpt-5.6", "gpt-5.6-luna", "gpt-6-astra"])
+    def test_gpt56_and_later_disable_implicit_prompt_cache(self, model: str) -> None:
+        client = FakeClient()
+        api = OpenAIResponsesApi(client=client, max_attempts=1)
+        api.create_response(model=model, input="hi")
+
+        kwargs = client.responses.calls[0]
+        assert kwargs["prompt_cache_options"] == {"mode": "explicit"}
+
+    @pytest.mark.parametrize("model", ["gpt-4o", "gpt-5", "gpt-5.5", "o3"])
+    def test_older_models_do_not_receive_prompt_cache_options(self, model: str) -> None:
+        client = FakeClient()
+        api = OpenAIResponsesApi(client=client, max_attempts=1)
+        api.create_response(model=model, input="hi")
+
+        kwargs = client.responses.calls[0]
+        assert "prompt_cache_options" not in kwargs
