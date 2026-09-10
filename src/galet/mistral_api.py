@@ -430,3 +430,16 @@ class MistralApi(LLMApi):
                 _sleep_backoff(attempt, self._backoff_base, self._backoff_cap)
 
         raise RuntimeError("MistralApi: exhausted retries")
+
+from .provider_info import ProviderInfo, register_provider
+
+register_provider(
+    ProviderInfo(
+        name="mistral",
+        display_name="Mistral",
+        description="Mistral API over an OpenAI-compatible endpoint.",
+        prefixes=("mistral",),
+        class_path="galet.mistral_api.MistralApi",
+        default_model="mistral-small-latest",
+    )
+)

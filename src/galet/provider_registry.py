@@ -1,12 +1,13 @@
 """Provider registry for LLM backends.
 
-Provides a simple resolution strategy:
-- explicit provider name takes priority (must be one of the known providers)
-- otherwise, try a prefix map on the model string
-- otherwise, default to 'openai'
+Connectors register themselves through `provider_info` when their module is
+imported. The registry imports every connector module shipped with galet to
+trigger registration, then resolves requests against that table.
 
-The registry attempts to lazily import provider classes so tests can run in
-environments where optional SDKs (eg. `openai`) are not installed.
+Resolution order:
+1. If explicit `provider` is provided, use it (must be known or ValueError).
+2. Try matching model-name prefixes from the registered connectors.
+3. Fall back to the default provider.
 """
 from __future__ import annotations
 
@@ -14,30 +15,21 @@ import importlib
 import logging
 from typing import Any, Dict, Optional, Tuple
 
-from .interface import LLMApi
 from .dto import LLMResponse
+from .interface import LLMApi
+from .provider_info import get_provider, registered_providers
 from .settings import Settings, default_settings
 
 
-# Map of canonical provider name -> import path for the LLMApi class.
-PROVIDERS: Dict[str, str] = {
-    "openai": "galet.openai_responses.OpenAIResponsesApi",
-    "deepseek": "galet.deepseek_responses.DeepSeekApi",
-    "gemini": "galet.gemini_api.GeminiApi",
-    "mistral": "galet.mistral_api.MistralApi",
-    "ollama": "galet.ollama_api.OllamaApi",
-}
+CONNECTOR_MODULES: Tuple[str, ...] = (
+    "galet.openai_responses",
+    "galet.deepseek_responses",
+    "galet.gemini_api",
+    "galet.mistral_api",
+    "galet.ollama_api",
+)
 
-# Prefix map: model-name prefix -> provider name (checked in order of the keys)
-PREFIX_MAP: Dict[str, str] = {
-    "deepseek": "deepseek",
-    "gemini": "gemini",
-    "mistral": "mistral",
-    "ollama": "ollama",
-    "gpt": "openai",
-    "o1": "openai",
-    "o3": "openai",
-}
+DEFAULT_PROVIDER_NAME = "openai"
 
 
 class _DummyApi:
@@ -58,40 +50,66 @@ class ProviderRegistry:
 
     Resolution order:
     1. If explicit `provider` is provided, use it (must be known or ValueError).
-    2. Try matching model name prefixes (PREFIX_MAP).
-    3. Fall back to 'openai'.
+    2. Try matching model name prefixes from the registered connectors.
+    3. Fall back to DEFAULT_PROVIDER_NAME.
     """
 
-    providers = PROVIDERS
-    prefix_map = PREFIX_MAP
+    _loaded = False
+
+    @classmethod
+    def load_all(cls) -> None:
+        if cls._loaded:
+            return
+        cls._loaded = True
+        for module_path in CONNECTOR_MODULES:
+            try:
+                importlib.import_module(module_path)
+            except Exception as e:
+                logging.debug("ProviderRegistry: failed to load %s: %s", module_path, e)
+
+    @classmethod
+    def providers(cls) -> Dict[str, str]:
+        cls.load_all()
+        return {info.name: info.class_path for info in registered_providers()}
+
+    @classmethod
+    def prefix_map(cls) -> Dict[str, str]:
+        cls.load_all()
+        mapping: Dict[str, str] = {}
+        for info in registered_providers():
+            for prefix in info.prefixes:
+                if prefix not in mapping:
+                    mapping[prefix] = info.name
+        return mapping
 
     @classmethod
     def _load_provider_class(cls, provider_name: str):
-        path = cls.providers.get(provider_name)
-        if not path:
+        cls.load_all()
+        info = get_provider(provider_name)
+        if info is None:
             return None
 
-        module_name, _, attr = path.rpartition(".")
+        module_name, _, attr = info.class_path.rpartition(".")
         try:
             module = importlib.import_module(module_name)
             return getattr(module, attr)
         except Exception as e:
-            logging.debug("ProviderRegistry: failed to import %s -> %s: %s", provider_name, path, e)
+            logging.debug("ProviderRegistry: failed to import %s -> %s: %s", provider_name, info.class_path, e)
             return None
 
     @classmethod
     def resolve_name(cls, model: Optional[str], provider: Optional[str] = None) -> str:
         if provider:
-            if provider not in cls.providers:
+            if provider not in cls.providers():
                 raise ValueError(f"unknown provider: {provider}")
             return provider
 
         model = (model or "").lower()
-        for prefix, pname in cls.prefix_map.items():
+        for prefix, pname in cls.prefix_map().items():
             if model.startswith(prefix):
                 return pname
 
-        return "openai"
+        return DEFAULT_PROVIDER_NAME
 
     @classmethod
     def resolve(

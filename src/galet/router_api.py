@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 from .dto import LLMResponse
 from .interface import LLMApi
-from .openai_responses import OpenAIResponsesApi
-from .deepseek_responses import DeepSeekApi
-from .gemini_api import GeminiApi
-from .mistral_api import MistralApi
-from .ollama_api import OllamaApi
 from .provider_registry import ProviderRegistry
 from .settings import Settings, default_settings
 
@@ -17,28 +12,13 @@ class RouterApi(LLMApi):
     def __init__(
         self,
         *,
-        openai_api: Optional[OpenAIResponsesApi] = None,
-        deepseek_api: Optional[DeepSeekApi] = None,
-        mistral_api: Optional[MistralApi] = None,
-        ollama_api: Optional[OllamaApi] = None,
-        gemini_api: Optional[GeminiApi] = None,
+        instances: Optional[Mapping[str, LLMApi]] = None,
         registry: ProviderRegistry = ProviderRegistry(),
         settings: Optional[Settings] = None,
     ) -> None:
         self._registry = registry
         self._settings = settings or default_settings
-        self._instances: Dict[str, LLMApi] = {}
-
-        if openai_api is not None:
-            self._instances["openai"] = openai_api
-        if deepseek_api is not None:
-            self._instances["deepseek"] = deepseek_api
-        if mistral_api is not None:
-            self._instances["mistral"] = mistral_api
-        if ollama_api is not None:
-            self._instances["ollama"] = ollama_api
-        if gemini_api is not None:
-            self._instances["gemini"] = gemini_api
+        self._instances: Dict[str, LLMApi] = dict(instances or {})
 
     def _get_provider_and_api(self, model: Optional[str], provider: Optional[str]) -> Tuple[str, LLMApi]:
         provider_name = self._registry.resolve_name(model, provider)

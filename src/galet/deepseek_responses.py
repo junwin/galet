@@ -357,3 +357,16 @@ class DeepSeekApi(LLMApi):
                 _sleep_backoff(attempt, self._backoff_base, self._backoff_cap)
 
         raise RuntimeError("DeepSeekApi: exhausted retries")
+
+from .provider_info import ProviderInfo, register_provider
+
+register_provider(
+    ProviderInfo(
+        name="deepseek",
+        display_name="DeepSeek",
+        description="DeepSeek API over an OpenAI-compatible endpoint.",
+        prefixes=("deepseek",),
+        class_path="galet.deepseek_responses.DeepSeekApi",
+        default_model="deepseek-chat",
+    )
+)
