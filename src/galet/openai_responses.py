@@ -138,10 +138,18 @@ def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
 _UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
 _MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS = 5
 
+# prompt_cache_options is supported by GPT-5.6 and later. Using explicit mode
+# with no prompt_cache_breakpoint disables OpenAI's automatic implicit cache
+# breakpoint while leaving older models untouched.
+_MIN_GPT_PROMPT_CACHE_OPTIONS_VERSION = (5, 6)
+
 # Matches "gpt-<generation>" at the start of a model id. After the digits we
 # require end-of-string, a "." or "-" variant suffix, or the glued "o" of the
 # gpt-4o family, so malformed prefixes such as "gpt-5x" are not classified.
 _GPT_MODEL_GENERATION_RE = re.compile(r"^gpt-(\d+)(?=$|[.\-]|o)", re.IGNORECASE)
+_GPT_MODEL_VERSION_RE = re.compile(
+    r"^gpt-(\d+)(?:\.(\d+))?(?=$|[-]|o)", re.IGNORECASE
+)
 
 
 def _gpt_major_generation(model: str) -> Optional[int]:
@@ -154,6 +162,24 @@ def _gpt_major_generation(model: str) -> Optional[int]:
     """
     match = _GPT_MODEL_GENERATION_RE.match(model.strip())
     return int(match.group(1)) if match else None
+
+
+def _gpt_model_version(model: str) -> Optional[tuple[int, int]]:
+    """Return ``(major, minor)`` for a well-formed GPT model id.
+
+    Model ids without an explicit minor version use zero, e.g. ``gpt-6-astra``
+    -> ``(6, 0)`` and ``gpt-5-mini`` -> ``(5, 0)``.
+    """
+    match = _GPT_MODEL_VERSION_RE.match(model.strip())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2) or 0)
+
+
+def _prompt_cache_options_supported(model: str) -> bool:
+    """Return True when ``model`` supports Responses prompt_cache_options."""
+    version = _gpt_model_version(model)
+    return version is not None and version >= _MIN_GPT_PROMPT_CACHE_OPTIONS_VERSION
 
 
 def _sampling_params_supported(model: str) -> bool:
@@ -334,6 +360,13 @@ class OpenAIResponsesApi(LLMApi):
         }
         if temperature is not None:
             request_params["temperature"] = temperature
+
+        # GPT-5.6+ automatically creates an implicit prompt-cache breakpoint.
+        # Explicit mode disables that automatic breakpoint; because Galet does
+        # not add any prompt_cache_breakpoint markers, this disables cache
+        # writes while we measure their cost/benefit.
+        if _prompt_cache_options_supported(model):
+            request_params["prompt_cache_options"] = {"mode": "explicit"}
 
         request_params = _sanitize_generation_params(model, request_params)
 
