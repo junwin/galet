@@ -58,12 +58,10 @@ class ProviderRegistry:
 
     @classmethod
     def providers(cls) -> Dict[str, str]:
-        cls.load_all()
         return {info.name: info.class_path for info in registered_providers()}
 
     @classmethod
     def prefix_map(cls) -> Dict[str, str]:
-        cls.load_all()
         mapping: Dict[str, str] = {}
         for info in registered_providers():
             for prefix in info.prefixes:
@@ -73,7 +71,6 @@ class ProviderRegistry:
 
     @classmethod
     def _load_provider_class(cls, provider_name: str):
-        cls.load_all()
         info = get_provider(provider_name)
         if info is None:
             return None
