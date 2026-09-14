@@ -100,7 +100,6 @@ class ModelCatalog:
     def sources(self) -> Tuple[ProviderInfo, ...]:
         """Return provider/source metadata already registered with Galet."""
 
-        ProviderRegistry.load_all()
         return registered_providers()
 
     def models(self, source: Optional[str] = None) -> Tuple[ModelInfo, ...]:
