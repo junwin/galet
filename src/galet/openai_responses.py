@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -123,13 +124,71 @@ def _extract_tool_calls(resp: Any) -> List[ToolCall]:
     return calls
 
 
-
 def _sleep_backoff(attempt: int, base: float, cap: float) -> None:
     """Exponential backoff with jitter."""
     delay = min(cap, base * (2**attempt))
     delay = delay * (0.6 + random.random() * 0.8)  # jitter 0.6–1.4x
     logging.warning("OpenAIResponsesApi: backing off for %.2fs (attempt=%d)", delay, attempt + 1)
     time.sleep(delay)
+
+
+# The OpenAI Responses API rejects these sampling params for GPT-5 and later
+# model ids (HTTP 400 "unsupported parameter"). GPT-4 and earlier ids
+# (gpt-4o, gpt-4.1, gpt-4.5) and non-GPT ids (o1, o3) still accept them.
+_UNSUPPORTED_SAMPLING_PARAMS = ("temperature", "top_p", "top_logprobs")
+_MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS = 5
+
+# Matches "gpt-<generation>" at the start of a model id. After the digits we
+# require end-of-string, a "." or "-" variant suffix, or the glued "o" of the
+# gpt-4o family, so malformed prefixes such as "gpt-5x" are not classified.
+_GPT_MODEL_GENERATION_RE = re.compile(r"^gpt-(\d+)(?=$|[.\-]|o)", re.IGNORECASE)
+
+
+def _gpt_major_generation(model: str) -> Optional[int]:
+    """Return the major GPT generation for a well-formed GPT model id.
+
+    Examples: ``gpt-4o`` -> 4, ``gpt-5-mini`` -> 5, ``gpt-6-astra`` -> 6.
+
+    Returns None for ids that are not GPT family ids (``o1``, ``o3``) and for
+    ids whose GPT prefix is malformed (``gpt-5x``, ``gpt5``, ``gpt-``).
+    """
+    match = _GPT_MODEL_GENERATION_RE.match(model.strip())
+    return int(match.group(1)) if match else None
+
+
+def _sampling_params_supported(model: str) -> bool:
+    """Return True when ``model`` accepts sampling params on the Responses API.
+
+    GPT-5 and later do not support temperature / top_p / top_logprobs. Every
+    other id (GPT-4 and earlier, o-series, unknown ids) keeps today's
+    pass-through behaviour. Malformed GPT prefixes are treated like unknown
+    ids and therefore pass through as well.
+    """
+    generation = _gpt_major_generation(model)
+    if generation is None:
+        return True
+    return generation < _MIN_GPT_GENERATION_WITHOUT_SAMPLING_PARAMS
+
+
+def _sanitize_generation_params(model: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop the sampling params unsupported by ``model``; never mutate ``params``.
+
+    Returns a new dict. Every dropped param is logged as a warning; all other
+    params and models pass through unchanged.
+    """
+    sanitized = dict(params)
+    if _sampling_params_supported(model):
+        return sanitized
+    for name in _UNSUPPORTED_SAMPLING_PARAMS:
+        if name in sanitized and sanitized[name] is not None:
+            logging.warning(
+                "OpenAIResponsesApi: dropping unsupported sampling param "
+                "%s for model %s",
+                name,
+                model,
+            )
+            del sanitized[name]
+    return sanitized
 
 
 class OpenAIResponsesApi(LLMApi):
@@ -263,6 +322,21 @@ class OpenAIResponsesApi(LLMApi):
             store,
         )
 
+        request_params: Dict[str, Any] = {
+            "model": model,
+            "input": input,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "store": store,
+            "metadata": metadata,
+            "previous_response_id": previous_response_id,
+            "text": text,
+        }
+        if temperature is not None:
+            request_params["temperature"] = temperature
+
+        request_params = _sanitize_generation_params(model, request_params)
+
         for attempt in range(self._max_attempts):
             t0 = time.time()
             logging.info(
@@ -272,17 +346,7 @@ class OpenAIResponsesApi(LLMApi):
             )
 
             try:
-                resp = self._get_client().responses.create(
-                    model=model,
-                    input=input,
-                    temperature=temperature,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                    store=store,
-                    metadata=metadata,
-                    previous_response_id=previous_response_id,
-                    text=text,
-                )
+                resp = self._get_client().responses.create(**request_params)
 
                 elapsed = time.time() - t0
 
