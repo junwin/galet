@@ -139,7 +139,8 @@ class Settings:
     @classmethod
     def _key_from_file(cls, path: Path, provider: str) -> Optional[str]:
         try:
-            text = path.read_text(encoding="utf-8")
+            with open(path, "r", encoding="utf-8") as credential_file:
+                text = credential_file.read()
         except OSError:
             return None
         return cls._key_from_text(text, provider)
