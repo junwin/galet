@@ -9,6 +9,7 @@ from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .adapter_interface import LLMAdapter
 from .provider_info import ProviderInfo, get_provider, register_provider, registered_providers
+from .settings import CredentialProfile, Settings, default_settings
 from .model_catalog import (
     ModelCatalog,
     ModelInfo,
@@ -58,6 +59,9 @@ __all__ = [
     "get_provider",
     "register_provider",
     "registered_providers",
+    "CredentialProfile",
+    "Settings",
+    "default_settings",
     "ModelCatalog",
     "ModelInfo",
     "ModelRequirements",
