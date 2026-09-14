@@ -91,3 +91,32 @@ def test_provider_info_frozen() -> None:
     )
     with pytest.raises(Exception):
         info.name = "other"  # type: ignore[misc]
+
+
+
+def test_metadata_inspection_does_not_import_provider_modules(monkeypatch) -> None:
+    def unexpected_import(module_name: str):
+        raise AssertionError(f"metadata lookup imported {module_name}")
+
+    monkeypatch.setattr(
+        "galet.provider_registry.importlib.import_module",
+        unexpected_import,
+    )
+
+    providers = ProviderRegistry.providers()
+    prefixes = ProviderRegistry.prefix_map()
+
+    assert providers["openai"] == "galet.openai_responses.OpenAIResponsesApi"
+    assert prefixes["gpt"] == "openai"
+
+
+def test_load_all_is_a_backward_compatible_no_op(monkeypatch) -> None:
+    def unexpected_import(module_name: str):
+        raise AssertionError(f"load_all imported {module_name}")
+
+    monkeypatch.setattr(
+        "galet.provider_registry.importlib.import_module",
+        unexpected_import,
+    )
+
+    assert ProviderRegistry.load_all() is None
