@@ -2,6 +2,13 @@ from .dto import LLMResponse, LLMUsage, ToolCall
 from .interface import LLMApi
 from .adapter_interface import LLMAdapter
 from .provider_info import ProviderInfo, get_provider, register_provider, registered_providers
+from .model_catalog import (
+    ModelCatalog,
+    ModelInfo,
+    ModelRequirements,
+    ResolvedModel,
+    default_model_catalog,
+)
 
 try:
     from .openai_responses import OpenAIResponsesApi
@@ -39,6 +46,11 @@ __all__ = [
     "get_provider",
     "register_provider",
     "registered_providers",
+    "ModelCatalog",
+    "ModelInfo",
+    "ModelRequirements",
+    "ResolvedModel",
+    "default_model_catalog",
     "OpenAIResponsesApi",
     "OpenAIResponsesAdapter",
     "MistralApi",
