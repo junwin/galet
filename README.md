@@ -58,32 +58,78 @@ environment variable or a command-line flag.
 
 ### Credentials (API keys)
 
-Only non-Ollama providers need an API key. galet resolves a key in this order:
+Galet owns provider credential resolution. Applications and delegated tasks
+should refer to a named profile rather than handle an API key.
 
-1. The provider's own environment variable (`OPENAI_API_KEY`,
-   `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`).
-2. A credential file in the directory named by `--credential-path`, or the
-   `GALET_CREDENTIAL_PATH` environment variable when no flag is given.
+A named profile selects exactly one source. Galet does not silently fall back
+to an environment variable or another file when that profile is selected.
 
-Credential file names:
+```python
+from galet.settings import Settings
 
-| Provider  | File                | Key(s) in the file            |
-|-----------|---------------------|-------------------------------|
-| openai    | `oaicred.json`      | `openai_api_key`              |
-| deepseek  | `deepseek_cred.json`| `deepseek_api_key`            |
-| gemini    | `gemini_cred.json`  | `gemini_api_key`, `api_key`   |
-| mistral   | `mistral_cred.json` | `mistral_api_key`             |
+settings = Settings(
+    credential_profiles={
+        "openai-service": {
+            "provider": "openai",
+            "source": "file",
+            "path": "/etc/galet/credentials/oaicred.json",
+        }
+    },
+    credential_profile="openai-service",
+)
 
-Example credential file (`oaicred.json`):
-
-```json
-{"openai_api_key": "sk-..."}
+key = settings.api_key("openai")
 ```
 
-```bash
-python samples/send_request.py --credential-path /path/to/credentials --provider openai "hi"
-GALET_CREDENTIAL_PATH=/path/to/credentials python samples/send_request.py --provider openai "hi"
+Supported profile sources:
+
+| Source | Required field | Behaviour |
+|---|---|---|
+| `file` | `path` | Reads the existing provider JSON credential format |
+| `environment` | `variable` | Reads only that named environment variable |
+| `systemd` | `credential` | Reads that file beneath `CREDENTIALS_DIRECTORY` |
+
+Systemd credentials may contain the existing JSON object or the raw API key:
+
+```ini
+[Service]
+User=lucy
+LoadCredential=openai:/etc/galet/credentials/oaicred.json
 ```
+
+```python
+settings = Settings(
+    credential_profiles={
+        "openai-service": {
+            "provider": "openai",
+            "source": "systemd",
+            "credential": "openai",
+        }
+    },
+    credential_profile="openai-service",
+)
+```
+
+For ordinary protected files, keep credentials outside the repository, make
+the directory accessible only to the service account, and make each credential
+file readable only by that account. The `GALET_CREDENTIAL_PATH` environment
+variable contains only a directory name and is not itself a secret.
+
+For backward compatibility, when no named profile is selected Galet retains
+the original lookup order:
+
+1. The provider environment variable (`OPENAI_API_KEY`,
+   `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, or `MISTRAL_API_KEY`).
+2. The provider file in `credential_path` or `GALET_CREDENTIAL_PATH`.
+
+Credential file names and JSON keys:
+
+| Provider  | File                 | Key(s) in the file |
+|-----------|----------------------|--------------------|
+| openai    | `oaicred.json`       | `openai_api_key` |
+| deepseek  | `deepseek_cred.json` | `deepseek_api_key` |
+| gemini    | `gemini_cred.json`   | `gemini_api_key`, `api_key` |
+| mistral   | `mistral_cred.json`  | `mistral_api_key` |
 
 ### Ollama base URL
 
