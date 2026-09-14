@@ -18,8 +18,8 @@ intentional change is the configuration boundary (see `settings.py`).
   temperature, tool calling, and response metadata. Providers: OpenAI,
   DeepSeek, Gemini, Mistral, Ollama.
 - **Routing** — explicit `provider` argument, or automatic model-name prefix
-  routing with OpenAI fallback. Connectors self-register their name,
-  model-name prefixes, and default model with `ProviderRegistry`.
+  routing with OpenAI fallback. Source names, model-name prefixes, class paths,
+  and default models are declarative; provider implementations load only when selected.
 - **Model catalog** — inspect source/model metadata and resolve a model from a
   profile, required capabilities, and optional model/source preferences.
 - **Tool calling** — bounded tool loop; tools own `name()`, `tool_def()`,
@@ -112,8 +112,9 @@ the native Ollama API.
 ## Model information and capability resolution
 
 `ProviderRegistry` continues to route explicit model names to their source.
-`ModelCatalog` adds inspectable model metadata and deterministic selection
-without making an API call or reading credentials.
+Source and model metadata can be inspected without importing provider
+implementations, making an API call, or reading credentials. `ModelCatalog`
+adds deterministic capability-based selection.
 
 ```python
 from galet import ModelRequirements, default_model_catalog
