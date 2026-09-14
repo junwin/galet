@@ -20,6 +20,8 @@ intentional change is the configuration boundary (see `settings.py`).
 - **Routing** — explicit `provider` argument, or automatic model-name prefix
   routing with OpenAI fallback. Connectors self-register their name,
   model-name prefixes, and default model with `ProviderRegistry`.
+- **Model catalog** — inspect source/model metadata and resolve a model from a
+  profile, required capabilities, and optional model/source preferences.
 - **Tool calling** — bounded tool loop; tools own `name()`, `tool_def()`,
   `result_schema()`, and `execute()`.
 - **Image generation** — OpenAI (`dall-e-*`, `gpt-image-*`) and Gemini
@@ -105,3 +107,33 @@ OLLAMA_BASE_URL=http://192.168.87.40:11434/v1 python samples/send_request.py --p
 
 Note the `/v1` suffix: galet talks to Ollama's OpenAI-compatible endpoint, not
 the native Ollama API.
+
+
+## Model information and capability resolution
+
+`ProviderRegistry` continues to route explicit model names to their source.
+`ModelCatalog` adds inspectable model metadata and deterministic selection
+without making an API call or reading credentials.
+
+```python
+from galet import ModelRequirements, default_model_catalog
+
+for source in default_model_catalog.sources():
+    print(source.name, source.default_model)
+
+for model in default_model_catalog.models(source="openai"):
+    print(model.name, sorted(model.profiles), sorted(model.capabilities))
+
+resolved = default_model_catalog.resolve(
+    ModelRequirements.create(
+        profile="focused-development",
+        required_capabilities=("tool-calling", "code-generation"),
+        preferred_model="gpt-5-mini",
+    )
+)
+print(resolved.source, resolved.model)
+```
+
+Model preferences are not agent identities. A caller may request a capability
+profile and allow Galet to select an eligible fallback. Credential lookup
+remains inside Galet's provider settings and is not exposed by the catalog.
