@@ -361,15 +361,3 @@ class OllamaApi(LLMApi):
 
         raise RuntimeError("OllamaApi: exhausted retries")
 
-from .provider_info import ProviderInfo, register_provider
-
-register_provider(
-    ProviderInfo(
-        name="ollama",
-        display_name="Ollama",
-        description="Local Ollama server over its OpenAI-compatible endpoint.",
-        prefixes=("ollama",),
-        class_path="galet.ollama_api.OllamaApi",
-        default_model="llama3.1",
-    )
-)
