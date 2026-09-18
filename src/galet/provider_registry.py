@@ -1,12 +1,12 @@
 """Provider registry for LLM backends.
 
-Connectors register themselves through `provider_info` when their module is
-imported. The registry imports every connector module shipped with galet to
-trigger registration, then resolves requests against that table.
+Source metadata is declarative in provider_info and can be inspected without
+importing connector implementations.  Only the selected provider class is
+imported, when resolve() needs to instantiate it.
 
 Resolution order:
 1. If explicit `provider` is provided, use it (must be known or ValueError).
-2. Try matching model-name prefixes from the registered connectors.
+2. Try matching model-name prefixes from the registered sources.
 3. Fall back to the default provider.
 """
 from __future__ import annotations
@@ -20,14 +20,6 @@ from .interface import LLMApi
 from .provider_info import get_provider, registered_providers
 from .settings import Settings, default_settings
 
-
-CONNECTOR_MODULES: Tuple[str, ...] = (
-    "galet.openai_responses",
-    "galet.deepseek_responses",
-    "galet.gemini_api",
-    "galet.mistral_api",
-    "galet.ollama_api",
-)
 
 DEFAULT_PROVIDER_NAME = "openai"
 
@@ -54,27 +46,22 @@ class ProviderRegistry:
     3. Fall back to DEFAULT_PROVIDER_NAME.
     """
 
-    _loaded = False
-
     @classmethod
     def load_all(cls) -> None:
-        if cls._loaded:
-            return
-        cls._loaded = True
-        for module_path in CONNECTOR_MODULES:
-            try:
-                importlib.import_module(module_path)
-            except Exception as e:
-                logging.debug("ProviderRegistry: failed to load %s: %s", module_path, e)
+        """Backward-compatible no-op.
+
+        Source metadata is loaded declaratively; provider implementations are
+        deliberately not imported by this method.
+        """
+
+        return None
 
     @classmethod
     def providers(cls) -> Dict[str, str]:
-        cls.load_all()
         return {info.name: info.class_path for info in registered_providers()}
 
     @classmethod
     def prefix_map(cls) -> Dict[str, str]:
-        cls.load_all()
         mapping: Dict[str, str] = {}
         for info in registered_providers():
             for prefix in info.prefixes:
@@ -84,7 +71,6 @@ class ProviderRegistry:
 
     @classmethod
     def _load_provider_class(cls, provider_name: str):
-        cls.load_all()
         info = get_provider(provider_name)
         if info is None:
             return None
