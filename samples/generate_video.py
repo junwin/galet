@@ -35,10 +35,10 @@ def main() -> int:
         preserve_subject=True,
     )
     result = response.videos[0]
-    api.download_video(result, destination)
-    print(f"Saved {destination}")
     if result.url:
         print(f"Temporary provider URL: {result.url}")
+    api.download_video(result, destination)
+    print(f"Saved {destination}")
     return 0
 
 
