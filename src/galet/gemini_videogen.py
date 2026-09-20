@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import inspect
 import logging
+from pathlib import Path
 import time
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -172,4 +174,19 @@ class GeminiVideoGenApi(VideoGenApi):
 
         if video.raw is None:
             raise ValueError("video result has no provider file to download")
-        self._get_client().files.download(file=video.raw, destination=destination)
+        download = self._get_client().files.download
+        try:
+            supports_destination = "destination" in inspect.signature(download).parameters
+        except (TypeError, ValueError):
+            supports_destination = False
+
+        if supports_destination:
+            download(file=video.raw, destination=destination)
+            return
+
+        data = download(file=video.raw)
+        if data is None:
+            data = getattr(video.raw, "video_bytes", None)
+        if not isinstance(data, (bytes, bytearray)):
+            raise RuntimeError("Gemini SDK download did not return video bytes")
+        Path(destination).write_bytes(data)
