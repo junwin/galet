@@ -38,7 +38,7 @@ def _completed_operation():
     )
 
 
-def test_generate_six_second_portrait_video_and_download() -> None:
+def test_generate_six_second_portrait_video_and_download(tmp_path) -> None:
     initial = SimpleNamespace(name="operations/123", done=False)
     completed = _completed_operation()
     client = MagicMock()
@@ -86,11 +86,11 @@ def test_generate_six_second_portrait_video_and_download() -> None:
     assert response.videos[0].url == "https://example.test/generated.mp4"
     assert response.videos[0].duration_seconds == 6
 
-    api.download_video(response.videos[0], "result.mp4")
-    client.files.download.assert_called_once_with(
-        file=response.videos[0].raw,
-        destination="result.mp4",
-    )
+    client.files.download.return_value = b"video-data"
+    destination = tmp_path / "result.mp4"
+    api.download_video(response.videos[0], str(destination))
+    client.files.download.assert_called_once_with(file=response.videos[0].raw)
+    assert destination.read_bytes() == b"video-data"
 
 
 @pytest.mark.parametrize("duration", [5, 7])
