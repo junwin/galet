@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import mimetypes
 from pathlib import Path
 import time
 from typing import Any, Optional
@@ -67,7 +68,16 @@ class GeminiVideoGenApi(VideoGenApi):
             self._client = GeminiApi._build_default_client(self._settings)
         return self._client
 
-    def _load_image(self, image_url: str) -> Any:
+    def _to_sdk_image(self, data: bytes, mime_type: str) -> Any:
+        if mime_type not in _ALLOWED_IMAGE_TYPES:
+            raise ValueError(f"unsupported image content type: {mime_type}")
+        if len(data) > self._max_image_bytes:
+            raise ValueError("input image exceeds maximum allowed size")
+        if not data:
+            raise ValueError("input image is empty")
+        return types.Image(image_bytes=data, mime_type=mime_type)
+
+    def _load_image_url(self, image_url: str) -> Any:
         parsed = urlparse(image_url)
         if parsed.scheme not in {"http", "https"}:
             raise ValueError("image_url must use http or https")
@@ -75,22 +85,39 @@ class GeminiVideoGenApi(VideoGenApi):
         request = Request(image_url, headers={"User-Agent": "galet/0.1"})
         with urlopen(request, timeout=self._image_timeout_seconds) as response:
             mime_type = response.headers.get_content_type()
-            if mime_type not in _ALLOWED_IMAGE_TYPES:
-                raise ValueError(f"unsupported image content type: {mime_type}")
             data = response.read(self._max_image_bytes + 1)
+        return self._to_sdk_image(data, mime_type)
 
-        if len(data) > self._max_image_bytes:
-            raise ValueError("input image exceeds maximum allowed size")
-        if not data:
-            raise ValueError("input image is empty")
-        return types.Image(image_bytes=data, mime_type=mime_type)
+    def _load_image_path(self, image_path: str) -> Any:
+        path = Path(image_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"input image not found: {image_path}")
+        mime_type, _ = mimetypes.guess_type(path.name)
+        if mime_type is None:
+            raise ValueError("unable to determine input image content type")
+        with path.open("rb") as handle:
+            data = handle.read(self._max_image_bytes + 1)
+        return self._to_sdk_image(data, mime_type)
+
+    def _load_image(
+        self,
+        *,
+        image_url: Optional[str],
+        image_path: Optional[str],
+    ) -> Any:
+        if bool(image_url) == bool(image_path):
+            raise ValueError("provide exactly one of image_url or image_path")
+        if image_path:
+            return self._load_image_path(image_path)
+        return self._load_image_url(image_url or "")
 
     def generate_video(
         self,
         *,
         model: str,
         prompt: str,
-        image_url: str,
+        image_url: Optional[str] = None,
+        image_path: Optional[str] = None,
         aspect_ratio: str = "9:16",
         duration_seconds: int = 6,
         resolution: str = "720p",
@@ -105,7 +132,7 @@ class GeminiVideoGenApi(VideoGenApi):
         if resolution in {"1080p", "4k"} and duration_seconds != 8:
             raise ValueError("1080p and 4k generation require an 8-second duration")
 
-        image = self._load_image(image_url)
+        image = self._load_image(image_url=image_url, image_path=image_path)
         effective_prompt = _PRESERVE_SUBJECT + prompt if preserve_subject else prompt
         config = types.GenerateVideosConfig(
             aspect_ratio=aspect_ratio,
