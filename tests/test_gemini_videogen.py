@@ -170,3 +170,51 @@ def test_router_rejects_unknown_model() -> None:
             prompt="Turn",
             image_url="https://example.test/model.jpg",
         )
+
+
+def test_generate_video_accepts_local_image(tmp_path) -> None:
+    image_path = tmp_path / "model.png"
+    image_path.write_bytes(b"png-data")
+    client = MagicMock()
+    client.models.generate_videos.return_value = _completed_operation()
+    api = GeminiVideoGenApi(client=client)
+
+    with (
+        patch(
+            "galet.gemini_videogen.types.Image",
+            side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
+        ),
+        patch(
+            "galet.gemini_videogen.types.GenerateVideosConfig",
+            side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
+        ),
+    ):
+        api.generate_video(
+            model="veo-3.1-fast-generate-preview",
+            prompt="Turn",
+            image_path=str(image_path),
+        )
+
+    image = client.models.generate_videos.call_args.kwargs["image"]
+    assert image.image_bytes == b"png-data"
+    assert image.mime_type == "image/png"
+
+
+def test_generate_video_requires_exactly_one_image_source(tmp_path) -> None:
+    image_path = tmp_path / "model.png"
+    image_path.write_bytes(b"png-data")
+    api = GeminiVideoGenApi(client=MagicMock())
+
+    with pytest.raises(ValueError, match="exactly one"):
+        api.generate_video(
+            model="veo-3.1-fast-generate-preview",
+            prompt="Turn",
+        )
+
+    with pytest.raises(ValueError, match="exactly one"):
+        api.generate_video(
+            model="veo-3.1-fast-generate-preview",
+            prompt="Turn",
+            image_url="https://example.test/model.png",
+            image_path=str(image_path),
+        )
