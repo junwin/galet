@@ -2,7 +2,7 @@
 
 Set GEMINI_API_KEY, then run:
 
-    python samples/generate_video.py IMAGE_URL "motion prompt" [OUTPUT.mp4]
+    python samples/generate_video.py IMAGE_URL_OR_PATH "motion prompt" [OUTPUT.mp4]
 """
 
 from __future__ import annotations
@@ -15,20 +15,25 @@ from galet.gemini_videogen import GeminiVideoGenApi
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Usage: python samples/generate_video.py IMAGE_URL "
+            "Usage: python samples/generate_video.py IMAGE_URL_OR_PATH "
             '"motion prompt" [OUTPUT.mp4]'
         )
         return 2
 
-    image_url = sys.argv[1]
+    image_source = sys.argv[1]
     prompt = sys.argv[2]
     destination = sys.argv[3] if len(sys.argv) > 3 else "veo-fashion-reel.mp4"
 
     api = GeminiVideoGenApi()
+    image_args = (
+        {"image_url": image_source}
+        if image_source.startswith(("http://", "https://"))
+        else {"image_path": image_source}
+    )
     response = api.generate_video(
         model="veo-3.1-fast-generate-preview",
-        image_url=image_url,
         prompt=prompt,
+        **image_args,
         aspect_ratio="9:16",
         duration_seconds=6,
         resolution="720p",
