@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Optional, Protocol
 
 from .videogen_dto import VideoGenResponse
 
@@ -13,7 +13,8 @@ class VideoGenApi(Protocol):
         *,
         model: str,
         prompt: str,
-        image_url: str,
+        image_url: Optional[str] = None,
+        image_path: Optional[str] = None,
         aspect_ratio: str = "9:16",
         duration_seconds: int = 6,
         resolution: str = "720p",
