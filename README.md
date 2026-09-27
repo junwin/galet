@@ -1,5 +1,9 @@
 # galet
 
+**Model provider layer.** Galet presents a common interface for LLM requests, embeddings, image and video operations, and provider-facing tool calls. An agent application such as Lucy uses it to talk to models; galet does not define agents, runs, memory, or tool permissions.
+
+The repository and distribution are currently named `galet`. `galet-llm` is a proposed name that would make this role clearer. See the [Galet package responsibilities](docs/architecture.md) for the complete layering and dependency boundaries.
+
 Provider-agnostic LLM, embedding, and image generation stack.
 
 ## Lineage
