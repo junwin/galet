@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import logging
 import time
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 
 try:
     from google import genai
@@ -31,7 +31,7 @@ except Exception:
 
 
 from .gemini_api import GeminiApi
-from .imagegen_dto import ImageGenResponse, ImageResult
+from .imagegen_dto import ImageGenResponse, ImageResult, ImageMessage
 from .imagegen_interface import ImageGenApi
 from .openai_responses import _sleep_backoff
 from .settings import Settings, default_settings
@@ -91,6 +91,7 @@ class GeminiImageGenApi(ImageGenApi):
         size: str = "1024x1024",
         quality: str = "standard",
         n: int = 1,
+        messages: Sequence[ImageMessage] = (),
     ) -> ImageGenResponse:
         if n != 1:
             logging.warning(
@@ -113,6 +114,20 @@ class GeminiImageGenApi(ImageGenApi):
             n,
         )
 
+        contents: Any = prompt
+        if messages:
+            contents = []
+            for message in messages:
+                parts = []
+                if message.text:
+                    parts.append(types.Part.from_text(text=message.text))
+                parts.extend(types.Part.from_bytes(data=image.data, mime_type=image.mime_type)
+                             for image in message.images)
+                contents.append(types.Content(
+                    role="model" if message.role == "assistant" else "user", parts=parts))
+            if prompt.strip():
+                contents.append(types.Content(role="user", parts=[types.Part.from_text(text=prompt)]))
+
         last_err: Optional[BaseException] = None
         for attempt in range(self._max_attempts):
             t0 = time.time()
@@ -124,7 +139,7 @@ class GeminiImageGenApi(ImageGenApi):
             try:
                 response = self._get_client().models.generate_content(
                     model=model,
-                    contents=prompt,
+                    contents=contents,
                     config=config,
                 )
 
@@ -177,10 +192,11 @@ class GeminiImageGenApi(ImageGenApi):
                             b64_json = base64.b64encode(data).decode("utf-8")
                         else:
                             b64_json = str(data)
-                        results.append(ImageResult(url=None, b64_json=b64_json, revised_prompt=None))
+                        results.append(ImageResult(url=None, b64_json=b64_json, revised_prompt=None, mime_type=getattr(inline_data, "mime_type", None) or "image/png"))
                         continue
                 file_data = getattr(part, "file_data", None)
                 if file_data is not None:
                     uri = getattr(file_data, "file_uri", None)
                     results.append(ImageResult(url=uri, b64_json=None, revised_prompt=None))
         return results
+
