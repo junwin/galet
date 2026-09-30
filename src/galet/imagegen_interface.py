@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, Sequence
 
-from .imagegen_dto import ImageGenResponse
+from .imagegen_dto import ImageGenResponse, ImageMessage
 
 
 class ImageGenApi(Protocol):
@@ -16,4 +16,6 @@ class ImageGenApi(Protocol):
         size: str = "1024x1024",
         quality: str = "standard",
         n: int = 1,
+        messages: Sequence[ImageMessage] = (),
     ) -> ImageGenResponse: ...
+

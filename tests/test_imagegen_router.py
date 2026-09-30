@@ -31,7 +31,7 @@ class TestImageGenRouterDispatch:
 
         assert result.images[0].url == "http://x"
         openai.generate_image.assert_called_once_with(
-            model="openai/dall-e-3",
+            model="dall-e-3",
             prompt="cat",
             size="512x512",
             quality="hd",
@@ -146,3 +146,4 @@ class TestImageGenRouterDI:
         router = ImageGenRouter(gemini_api=gemini)
         router.generate_image(model="imagen-3.0-generate-002", prompt="x")
         gemini.generate_image.assert_called_once()
+
