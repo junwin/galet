@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from .gemini_imagegen import GeminiImageGenApi
-from .imagegen_dto import ImageGenResponse
+from .imagegen_dto import ImageGenResponse, ImageMessage
 from .imagegen_interface import ImageGenApi
 from .openai_imagegen import OpenAIImageGenApi
 
@@ -28,7 +28,11 @@ class ImageGenRouter(ImageGenApi):
         size: str = "1024x1024",
         quality: str = "standard",
         n: int = 1,
+        messages: Sequence[ImageMessage] = (),
     ) -> ImageGenResponse:
+        if model.startswith("openai/") or model.startswith("gemini/"):
+            model = model.split("/", 1)[1]
+        extra = {"messages": messages} if messages else {}
         if (
             model.startswith("openai")
             or model.startswith("dall-e")
@@ -40,6 +44,7 @@ class ImageGenRouter(ImageGenApi):
                 size=size,
                 quality=quality,
                 n=n,
+                **extra,
             )
         if model.startswith("gemini") or model.startswith("imagen"):
             return self._gemini.generate_image(
@@ -48,7 +53,9 @@ class ImageGenRouter(ImageGenApi):
                 size=size,
                 quality=quality,
                 n=n,
+                **extra,
             )
         raise ValueError(
             f"ImageGenRouter: no image generation provider for model '{model}'"
         )
+

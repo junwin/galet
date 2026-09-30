@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 
 # The real 'openai' package may not be available in test environments. Provide
 # lightweight fallbacks so this module can be imported without the real SDK.
@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover - environment dependent
         pass
 
 
-from .imagegen_dto import ImageGenResponse, ImageResult
+from .imagegen_dto import ImageGenResponse, ImageResult, ImageMessage
 from .imagegen_interface import ImageGenApi
 from .openai_responses import _sleep_backoff
 from .settings import Settings, default_settings
@@ -119,7 +119,18 @@ class OpenAIImageGenApi(ImageGenApi):
         size: str = "1024x1024",
         quality: str = "standard",
         n: int = 1,
+        messages: Sequence[ImageMessage] = (),
     ) -> ImageGenResponse:
+        if model.startswith("openai/"):
+            model = model.split("/", 1)[1]
+        images = [image for message in messages for image in message.images]
+        if images and not model.startswith("gpt-image"):
+            raise ValueError("reference images require a gpt-image model")
+        # The Images endpoint has no chat-message parameter. Preserve the explicit
+        # transcript in the prompt and send every reference as a multipart image.
+        if messages:
+            transcript = "\n\n".join(f"{m.role}: {m.text}" for m in messages)
+            prompt = f"{transcript}\n\nuser: {prompt}" if prompt else transcript
         self._validate_n(model, n)
         quality = self._normalize_quality(model, quality)
 
@@ -140,12 +151,19 @@ class OpenAIImageGenApi(ImageGenApi):
                 self._max_attempts,
             )
             try:
-                resp = self._get_client().images.generate(
+                operation = self._get_client().images.edit if images else self._get_client().images.generate
+                extra = {}
+                if images:
+                    extensions = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
+                    extra["image"] = [(f"reference-{i}.{extensions[image.mime_type]}", image.data, image.mime_type)
+                                      for i, image in enumerate(images)]
+                resp = operation(
                     model=model,
                     prompt=prompt,
                     size=size,
                     quality=quality,
                     n=n,
+                    **extra,
                 )
 
                 elapsed = time.time() - t0
@@ -194,3 +212,4 @@ class OpenAIImageGenApi(ImageGenApi):
                 raise
 
         raise RuntimeError("OpenAIImageGenApi: exhausted retries unexpectedly") from last_err
+
