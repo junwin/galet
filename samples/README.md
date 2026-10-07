@@ -18,6 +18,7 @@ See the root `README.md` for full details. The short version:
 - **API keys** — non-Ollama providers need one. Use the provider env var
   (`OPENAI_API_KEY`, etc.), or `--credential-path` (or `GALET_CREDENTIAL_PATH`)
   pointing at a directory of credential files such as `oaicred.json`.
+  Templates for those files are in `credentials/` (see `credentials/README.md`).
 - **Ollama URL** — no key needed, but set the server address with
   `--ollama-base-url` (or `OLLAMA_BASE_URL`). The default is
   `http://localhost:11434/v1`.

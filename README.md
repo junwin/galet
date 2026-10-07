@@ -36,12 +36,113 @@ intentional change is the configuration boundary (see `settings.py`).
 - **Optional SDKs** — imports degrade gracefully when a provider SDK is not
   installed; missing credentials never raise at import or call time.
 
-## Quick start
+## Installation
+
+### Requirements
+
+- **Python 3.11 or newer.** Check with `python --version` (or `py --version`
+  on Windows). Install it from <https://www.python.org/downloads/>, from your
+  distribution's package manager (Linux), or from the Microsoft Store (Windows).
+- **pip and venv**, bundled with the python.org installer. On Debian/Ubuntu
+  install them with `sudo apt install python3-venv python3-pip`.
+- **git**, only needed to clone the source.
+
+The `openai` SDK is installed automatically and also serves the DeepSeek,
+Mistral, and Ollama providers. The Gemini provider additionally needs the
+optional `google-genai` SDK (see below).
+
+### Get the source
 
 ```bash
-python -m venv .venv
+git clone https://github.com/junwin/galet.git
+cd galet
+```
+
+### Linux
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
 .venv/bin/pip install -e .
 ```
+
+Activate the virtual environment for an interactive shell:
+
+```bash
+source .venv/bin/activate
+```
+
+### Windows
+
+Run these from PowerShell. If `python` is not on `PATH`, use the `py` launcher
+(Command Prompt users can run the same commands, replacing `py` with `python`).
+
+```powershell
+py -m venv .venv
+.venv\Scripts\pip install --upgrade pip
+.venv\Scripts\pip install -e .
+```
+
+Activate the virtual environment:
+
+- PowerShell: `.venv\Scripts\Activate.ps1` — if script execution is blocked,
+  first run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+- Command Prompt: `.venv\Scripts\activate.bat`
+
+### Optional: Gemini support
+
+Gemini chat, image, and video support require the `google-genai` SDK, installed
+through the `gemini` extra:
+
+```bash
+# Linux
+.venv/bin/pip install -e ".[gemini]"
+
+# Windows
+.venv\Scripts\pip install -e ".[gemini]"
+```
+
+### Credential path (required for file-based credentials)
+
+When you supply provider keys as files, galet reads them from one directory.
+Setting the `GALET_CREDENTIAL_PATH` environment variable is the simplest
+route; it holds the directory location, not the secrets:
+
+```bash
+# Linux — add to ~/.bashrc to make it persist across shells
+export GALET_CREDENTIAL_PATH=/home/myname/credential
+```
+
+```powershell
+# Windows — PowerShell; persist for the current user
+[Environment]::SetEnvironmentVariable("GALET_CREDENTIAL_PATH", "C:\Users\myname\credential", "User")
+```
+
+The directory must exist and contain the provider files listed under
+[Credentials](#credentials-api-keys) (for example `oaicred.json`). Copy the
+templates in `samples/credentials/` to get started. Passing
+`Settings(credential_path=...)` in code also works, and overrides the
+environment variable.
+
+If you use a named credential profile instead, `GALET_CREDENTIAL_PATH` is not
+needed for that profile — the profile names its own file, environment variable,
+or systemd credential. Without either route, galet falls back to the provider
+environment variables (`OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
+`MISTRAL_API_KEY`) and never raises when no credential is found.
+
+### Verify the installation
+
+```bash
+# Linux
+.venv/bin/python -c "import galet; print('galet import OK')"
+.venv/bin/pip show galet
+
+# Windows
+.venv\Scripts\python -c "import galet; print('galet import OK')"
+.venv\Scripts\pip show galet
+```
+
+## Samples
 
 Runnable examples live in `samples/`:
 
@@ -134,6 +235,10 @@ Credential file names and JSON keys:
 | deepseek  | `deepseek_cred.json` | `deepseek_api_key` |
 | gemini    | `gemini_cred.json`   | `gemini_api_key`, `api_key` |
 | mistral   | `mistral_cred.json`  | `mistral_api_key` |
+
+Ready-to-use templates for each file live in `samples/credentials/`: copy
+them into your `GALET_CREDENTIAL_PATH` directory, drop the `.example`
+suffix, and replace the placeholder value.
 
 ### Ollama base URL
 
