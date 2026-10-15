@@ -2,6 +2,31 @@
 
 Provider-agnostic LLM, embedding, and image generation stack.
 
+## Install
+
+Install from PyPI:
+
+```bash
+pip install galet
+```
+
+Python 3.11 or newer. For Gemini chat, image and video support, install the
+`gemini` extra:
+
+```bash
+pip install "galet[gemini]"
+```
+
+Verify the installation:
+
+```bash
+python -c "import galet; print('galet import OK')"
+```
+
+To develop galet itself, clone and install from source instead — see
+[Install from source](#install-from-source). The runnable examples in
+`samples/` are part of the repository, so clone it to try them.
+
 ## Lineage
 
 This package is extracted from the Lucy monorepo (`src/llm`) as described in
@@ -32,7 +57,7 @@ intentional change is the configuration boundary (see `settings.py`).
 - **Optional SDKs** — imports degrade gracefully when a provider SDK is not
   installed; missing credentials never raise at import or call time.
 
-## Installation
+## Install from source
 
 ### Requirements
 
