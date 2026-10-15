@@ -27,15 +27,11 @@ To develop galet itself, clone and install from source instead — see
 [Install from source](#install-from-source). The runnable examples in
 `samples/` are part of the repository, so clone it to try them.
 
-## Lineage
+## Background
 
-This package is extracted from the Lucy monorepo (`src/llm`) as described in
-the Lucy design doc `software/ai/lucy/design/llm-module-extraction.md`.
-
-It is a fresh repository with no shared git history. The extracted module's
-behaviour, public interface, optional-SDK import fallbacks, and
-no-fail-on-missing-credential semantics are preserved as-is; the only
-intentional change is the configuration boundary (see `settings.py`).
+This package grew out of the LLM layer of a personal agent project. The
+provider behaviour, public interface, optional-SDK import fallbacks, and
+no-fail-on-missing-credential semantics are unchanged from that origin.
 
 ## Features
 
@@ -219,7 +215,7 @@ Systemd credentials may contain the existing JSON object or the raw API key:
 
 ```ini
 [Service]
-User=lucy
+User=myapp
 LoadCredential=openai:/etc/galet/credentials/oaicred.json
 ```
 
