@@ -6,7 +6,7 @@ from .videogen_dto import VideoGenResponse
 
 
 class VideoGenApi(Protocol):
-    """Interface for image-to-video generation."""
+    """Interface for video generation (image requirements depend on provider)."""
 
     def generate_video(
         self,

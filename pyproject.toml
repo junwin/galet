@@ -23,7 +23,7 @@ classifiers = [
 
 [project.optional-dependencies]
 openai = ["openai>=3.0.0"]
-gemini = ["google-genai"]
+gemini = ["google-genai>=2.33.0"]
 
 [project.urls]
 Homepage = "https://github.com/junwin/galet"

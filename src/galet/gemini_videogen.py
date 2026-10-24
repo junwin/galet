@@ -199,6 +199,9 @@ class GeminiVideoGenApi(VideoGenApi):
     def download_video(self, video: VideoResult, destination: str) -> None:
         """Download a generated video while its provider file remains available."""
 
+        if video.video_bytes is not None:
+            Path(destination).write_bytes(video.video_bytes)
+            return
         if video.raw is None:
             raise ValueError("video result has no provider file to download")
         download = self._get_client().files.download
