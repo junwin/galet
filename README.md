@@ -47,6 +47,9 @@ no-fail-on-missing-credential semantics are unchanged from that origin.
   `result_schema()`, and `execute()`.
 - **Image generation** — OpenAI (`dall-e-*`, `gpt-image-*`) and Gemini
   (`gemini-*`, `imagen-*`) backends behind a common interface.
+- **Video generation** — Google Gemini Omni Flash text/image-to-video, with
+  portrait/landscape output and MP4 download. See
+  [the video sample](samples/README.md#generate_videopy).
 - **Image description** — vision-capable models describe images sent inline
   (base64, no upload).
 - **Embeddings** — OpenAI and Mistral embedding adapters.
@@ -168,6 +171,7 @@ Runnable examples live in `samples/`:
 | `samples/send_request.py` | Simple chat request (defaults to local Ollama) |
 | `samples/tool_handlers.py` | Tool-calling loop with a stubbed `execute_command` tool |
 | `samples/generate_image.py` | Image generation via OpenAI or Gemini |
+| `samples/generate_video.py` | Google Omni video generation and MP4 download |
 | `samples/describe_image.py` | Describe an image file with a vision model |
 | `samples/list_sources.py` | List providers and model-prefix routing |
 
