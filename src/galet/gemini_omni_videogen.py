@@ -72,7 +72,8 @@ class GeminiOmniVideoGenApi(GeminiVideoGenApi):
                 "delivery": "uri",
             },
             background=False,
-            store=False,
+            # Google requires stored interactions for URI-delivered videos.
+            store=True,
             stream=False,
             timeout=self._timeout_seconds,
         )

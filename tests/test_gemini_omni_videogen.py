@@ -41,7 +41,7 @@ def test_image_generation_uri_poll_and_download(tmp_path):
         "duration": "6s", "resolution": "720p",
     }
     assert call["model"] == MODEL
-    assert call["background"] is False and call["stream"] is False and call["store"] is False
+    assert call["background"] is False and call["stream"] is False and call["store"] is True
     assert call["timeout"] == 360
     client.models.generate_videos.assert_not_called()
     assert client.files.get.call_args.kwargs["name"] == "files/clip-123"
@@ -175,6 +175,12 @@ def test_installed_sdk_serialization_and_response_parsing(tmp_path):
             assert body["model"] == MODEL
             assert body["response_format"]["duration"] == "6s"
             assert body["response_format"]["delivery"] == "uri"
+            # Reproduce the provider constraint that caused the live HTTP 400.
+            if body.get("store") is not True:
+                return httpx.Response(400, json={"error": {
+                    "message": "store=true is required when response format has video delivery set to URI.",
+                    "code": "invalid_request",
+                }})
             return httpx.Response(200, json={
                 "id": "sdk-check", "object": "interaction", "model": MODEL,
                 "status": "completed", "steps": [{"type": "model_output", "content": [
