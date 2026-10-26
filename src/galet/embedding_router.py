@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from typing import Optional
+import logging
+from time import perf_counter
 
 from .embedding_dto import EmbeddingResponse
 from .embedding_interface import EmbeddingApi
 from .openai_embedding import OpenAIEmbeddingApi
 from .mistral_embedding import MistralEmbeddingApi
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingRouter(EmbeddingApi):
@@ -30,6 +34,23 @@ class EmbeddingRouter(EmbeddingApi):
         model: str,
         input: list[str],
     ) -> EmbeddingResponse:
-        if model.startswith("mistral"):
-            return self._mistral.embed(model=model, input=input)
-        return self._openai.embed(model=model, input=input)
+        provider = "mistral" if model.startswith("mistral") else "openai"
+        api = self._mistral if provider == "mistral" else self._openai
+        started = perf_counter()
+        logger.info("embedding_request_start provider=%s model=%s input_count=%d",
+                    provider, model, len(input))
+        try:
+            response = api.embed(model=model, input=input)
+        except Exception as exc:
+            logger.error(
+                "embedding_request_failed provider=%s model=%s input_count=%d duration_ms=%.1f error_type=%s",
+                provider, model, len(input), (perf_counter() - started) * 1000, type(exc).__name__,
+            )
+            raise
+        logger.info(
+            "embedding_request_done provider=%s model=%s input_count=%d duration_ms=%.1f "
+            "embedding_count=%d dimensions=%d",
+            provider, response.model, len(input), (perf_counter() - started) * 1000,
+            len(response.embeddings), len(response.embeddings[0]) if response.embeddings else 0,
+        )
+        return response

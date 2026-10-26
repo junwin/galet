@@ -13,6 +13,9 @@ from .openai_responses import _extract_usage, _sleep_backoff
 from .settings import Settings, default_settings
 
 
+logger = logging.getLogger(__name__)
+
+
 class MistralEmbeddingApi(EmbeddingApi):
     """Mistral Embeddings API implementation using OpenAI-compatible endpoint.
 
@@ -62,15 +65,15 @@ class MistralEmbeddingApi(EmbeddingApi):
         last_err: Optional[BaseException] = None
 
         # ---- entry log ----
-        logging.info(
-            "MistralEmbeddingApi.embed: enter model=%s input_count=%d",
+        logger.info(
+            "embedding_request_start provider=mistral model=%s input_count=%d",
             model,
             len(input),
         )
 
         for attempt in range(self._max_attempts):
             t0 = time.time()
-            logging.info(
+            logger.info(
                 "MistralEmbeddingApi.embed: attempt %d/%d starting",
                 attempt + 1,
                 self._max_attempts,
@@ -89,9 +92,9 @@ class MistralEmbeddingApi(EmbeddingApi):
                 usage = _extract_usage(getattr(resp, "usage", None))
 
                 # ---- response summary ----
-                logging.info(
-                    "MistralEmbeddingApi.embed: attempt %d succeeded in %.3fs "
-                    "model=%s embedding_count=%d dims=%d",
+                logger.info(
+                    "embedding_request_done provider=mistral attempt=%d duration_seconds=%.3f "
+                    "model=%s embedding_count=%d dimensions=%d",
                     attempt + 1,
                     elapsed,
                     resp_model,
@@ -110,7 +113,7 @@ class MistralEmbeddingApi(EmbeddingApi):
                 elapsed = time.time() - t0
                 last_err = e
 
-                logging.warning(
+                logger.warning(
                     "MistralEmbeddingApi.embed: attempt %d/%d failed after %.3fs "
                     "with %s: %s",
                     attempt + 1,
@@ -121,7 +124,7 @@ class MistralEmbeddingApi(EmbeddingApi):
                 )
 
                 if attempt == self._max_attempts - 1:
-                    logging.error(
+                    logger.error(
                         "MistralEmbeddingApi.embed: exhausted retries after %d attempts",
                         self._max_attempts,
                     )
