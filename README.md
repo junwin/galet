@@ -314,3 +314,16 @@ print(resolved.source, resolved.model)
 Model preferences are not agent identities. A caller may request a capability
 profile and allow Galet to select an eligible fallback. Credential lookup
 remains inside Galet's provider settings and is not exposed by the catalog.
+
+### Embedding logging
+
+Embedding calls log through the named `galet.embedding_router`,
+`galet.openai_embedding` and `galet.mistral_embedding` loggers. Enable INFO in the
+host application's logging configuration to see `embedding_request_start` and
+`embedding_request_done`, including provider, model, input/vector counts,
+dimensions and timing. Direct provider calls (including galet-memory's configured
+provider) emit these records without requiring the router. Existing provider
+retry/error diagnostics use the provider's named logger as well. The router
+logs terminal failures at ERROR with exception type and re-raises the original
+exception. Summary records omit input text, vector values and credentials.
+Galet does not install logging handlers or change the host's global log level.

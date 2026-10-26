@@ -96,3 +96,46 @@ class TestEmbeddingRouterDI:
         router = EmbeddingRouter(openai_api=openai, mistral_api=mistral)
         assert router._openai is openai
         assert router._mistral is mistral
+
+
+@pytest.mark.parametrize('model,provider', [('text-embedding-3-small', 'openai'), ('mistral-embed', 'mistral')])
+def test_request_logs_success_and_failure_without_input_text(model, provider, caplog):
+    import logging
+    api = make_mock_api(EmbeddingResponse(model=model, embeddings=[[1.0, 0.0]]))
+    router = EmbeddingRouter(openai_api=api, mistral_api=api)
+    with caplog.at_level(logging.INFO):
+        router.embed(model=model, input=['private document content'])
+    assert 'embedding_request_start' in caplog.text
+    assert 'embedding_request_done' in caplog.text
+    assert f'provider={provider}' in caplog.text
+    assert 'dimensions=2' in caplog.text
+    assert 'private document content' not in caplog.text
+
+    caplog.clear()
+    failure = RuntimeError('private provider response')
+    api.embed.side_effect = failure
+    with pytest.raises(RuntimeError) as caught:
+        router.embed(model=model, input=['private document content'])
+    assert caught.value is failure
+    assert 'embedding_request_failed' in caplog.text
+    assert 'error_type=RuntimeError' in caplog.text
+    assert 'private provider response' not in caplog.text
+    assert 'private document content' not in caplog.text
+
+
+@pytest.mark.parametrize('provider', ['openai', 'mistral'])
+def test_direct_provider_logs_without_router(provider, caplog):
+    import importlib
+    import logging
+    from types import SimpleNamespace
+    module = importlib.import_module(f'galet.{provider}_embedding')
+    cls = module.OpenAIEmbeddingApi if provider == 'openai' else module.MistralEmbeddingApi
+    client = Mock()
+    client.embeddings.create.return_value = SimpleNamespace(
+        model='configured-model', data=[SimpleNamespace(embedding=[1.0, 0.0])], usage=None)
+    with caplog.at_level(logging.INFO):
+        cls(client=client).embed(model='configured-model', input=['private document content'])
+    assert f'embedding_request_start provider={provider}' in caplog.text
+    assert f'embedding_request_done provider={provider}' in caplog.text
+    assert f'galet.{provider}_embedding' in caplog.text
+    assert 'private document content' not in caplog.text
