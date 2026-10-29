@@ -158,7 +158,10 @@ class AnthropicApi(LLMApi):
                 "The anthropic SDK is not installed; install it with: "
                 "pip install 'galet[anthropic]'"
             )
-        return Anthropic(api_key=(settings or default_settings).api_key("anthropic"))
+        # Galet owns retry/backoff; avoid multiplying attempts by SDK retries.
+        return Anthropic(
+            api_key=(settings or default_settings).api_key("anthropic"), max_retries=0,
+        )
 
     def supports_image_processing(self, model: str) -> bool:
         return True
@@ -285,21 +288,30 @@ class AnthropicApi(LLMApi):
         system_parts: List[str] = []
         messages: List[Dict[str, Any]] = []
         tool_results: List[Dict[str, Any]] = []
+        pending_results: List[Dict[str, Any]] = []
+
+        def flush_results() -> None:
+            if pending_results:
+                messages.append({"role": "user", "content": list(pending_results)})
+                pending_results.clear()
+
         for item in items:
             if isinstance(item, str):
+                flush_results()
                 messages.append({"role": "user", "content": item})
                 continue
             if not isinstance(item, dict):
                 raise ValueError(f"unsupported input item for Anthropic API: {type(item).__name__}")
             if item.get("type") == "function_call_output":
-                tool_results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": str(item.get("call_id", "")),
-                        "content": str(item.get("output", "")),
-                    }
-                )
+                result = {
+                    "type": "tool_result",
+                    "tool_use_id": str(item.get("call_id", "")),
+                    "content": str(item.get("output", "")),
+                }
+                tool_results.append(result)
+                pending_results.append(result)
                 continue
+            flush_results()
             role = item.get("role")
             if role in ("system", "developer"):
                 text = self._content_text(item.get("content"))
@@ -310,8 +322,13 @@ class AnthropicApi(LLMApi):
             else:
                 raise ValueError(f"unsupported input item for Anthropic API: role={role!r}")
 
+        flush_results()
         system = "\n\n".join(system_parts)
         if not tool_results:
+            return messages, system
+        # Explicit history is already ordered and contains its assistant turn;
+        # do not move results ahead of it or duplicate a cached conversation.
+        if any(m["role"] == "assistant" for m in messages):
             return messages, system
 
         prefix: List[Dict[str, Any]] = []
@@ -324,13 +341,13 @@ class AnthropicApi(LLMApi):
             previous_tool_calls = (metadata or {}).get("previous_tool_calls")
             if previous_tool_calls:
                 prefix = [self._tool_calls_to_assistant_message(previous_tool_calls)]
-        if not prefix and not any(m["role"] == "assistant" for m in messages):
+        if not prefix:
             raise ValueError(
                 "tool outputs were supplied but the assistant turn that requested them is "
                 f"unknown (previous_response_id={previous_response_id!r}); pass "
                 "metadata['previous_tool_calls'] or include the assistant turn in the input"
             )
-        return prefix + [{"role": "user", "content": tool_results}] + messages, system
+        return prefix + messages, system
 
     def _remember(self, response_id: str, messages: List[Dict[str, Any]], system: str) -> None:
         self._conversation_context[response_id] = {"messages": messages, "system": system}

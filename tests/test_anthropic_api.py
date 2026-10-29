@@ -521,7 +521,11 @@ def test_tool_outputs_with_explicit_assistant_turn_in_input_are_accepted() -> No
             {"type": "function_call_output", "call_id": "z", "output": "r"},
         ],
     )
-    assert [m["role"] for m in _sent(create)["messages"]] == ["user", "user", "assistant"]
+    messages = _sent(create)["messages"]
+    assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+    assert messages[-1]["content"] == [
+        {"type": "tool_result", "tool_use_id": "z", "content": "r"}
+    ]
 
 
 def test_plain_messages_with_previous_response_id_are_not_prefixed_with_history() -> None:
@@ -642,7 +646,7 @@ def test_default_client_uses_settings_api_key(monkeypatch: pytest.MonkeyPatch, t
 
     AnthropicApi(settings=Settings(credential_path=str(tmp_path)))._get_client()
 
-    constructor.assert_called_once_with(api_key="sk-ant-file")
+    constructor.assert_called_once_with(api_key="sk-ant-file", max_retries=0)
 
 
 def test_default_client_prefers_environment_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
@@ -653,7 +657,7 @@ def test_default_client_prefers_environment_key(monkeypatch: pytest.MonkeyPatch,
 
     AnthropicApi(settings=Settings(credential_path=str(tmp_path)))._get_client()
 
-    constructor.assert_called_once_with(api_key="sk-ant-env")
+    constructor.assert_called_once_with(api_key="sk-ant-env", max_retries=0)
 
 
 def test_default_client_is_built_once(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -770,3 +774,38 @@ def test_real_sdk_round_trip_replays_thinking_blocks_on_the_wire() -> None:
     assert requests[1]["messages"][2]["content"] == [
         {"type": "tool_result", "tool_use_id": "toolu_01", "content": "sunny"}
     ]
+
+
+def test_explicit_tool_history_is_not_duplicated_when_response_is_cached() -> None:
+    api, create = _api(
+        _response([_tool_use("z", "f", {})], response_id="first", stop_reason="tool_use"),
+        _response([_text("done")], response_id="second"),
+    )
+    api.create_response(model="claude-sonnet-5-5", input="q")
+    api.create_response(
+        model="claude-sonnet-5-5",
+        previous_response_id="first",
+        input=[
+            {"role": "user", "content": "q"},
+            {"role": "assistant", "content": [{"type": "tool_use", "id": "z", "name": "f", "input": {}}]},
+            {"type": "function_call_output", "call_id": "z", "output": "result"},
+        ],
+    )
+    messages = _sent(create)["messages"]
+    assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+    assert messages[-1]["content"][0]["tool_use_id"] == "z"
+
+
+def test_multiple_explicit_tool_rounds_keep_results_after_each_assistant_turn() -> None:
+    api, create = _api(_response([_text("done")]))
+    api.create_response(model="claude-sonnet-5-5", input=[
+        {"role": "user", "content": "q"},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "a", "name": "f", "input": {}}]},
+        {"type": "function_call_output", "call_id": "a", "output": "one"},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "b", "name": "f", "input": {}}]},
+        {"type": "function_call_output", "call_id": "b", "output": "two"},
+    ])
+    messages = _sent(create)["messages"]
+    assert [m["role"] for m in messages] == ["user", "assistant", "user", "assistant", "user"]
+    assert messages[2]["content"][0]["tool_use_id"] == "a"
+    assert messages[4]["content"][0]["tool_use_id"] == "b"
