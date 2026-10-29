@@ -46,7 +46,11 @@ python samples/send_request.py --provider openai --model gpt-4o-mini "What is 2 
 python samples/send_request.py --provider ollama --ollama-base-url http://localhost:11434/v1 "hi"
 python samples/send_request.py --credential-path /home/myname/credential --provider openai --model gpt-4o-mini "Tell me a one-sentence joke."
 python samples/send_request.py --credential-path /home/myname/credential --model mistral-large-latest "Tell me a one-sentence joke."
+python samples/send_request.py --model claude-sonnet-5-5 "Tell me a one-sentence joke."
 ```
+
+Claude models need the `anthropic` extra (`pip install -e ".[anthropic]"`) and
+an `ANTHROPIC_API_KEY` (or `anthropic_cred.json` under `GALET_CREDENTIAL_PATH`).
 
 ### `tool_handlers.py`
 

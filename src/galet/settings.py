@@ -11,6 +11,7 @@ _PROVIDER_ENV_VAR: Dict[str, str] = {
     "deepseek": "DEEPSEEK_API_KEY",
     "mistral": "MISTRAL_API_KEY",
     "gemini": "GEMINI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
 }
 
 _PROVIDER_CREDENTIAL_FILE: Dict[str, str] = {
@@ -18,6 +19,7 @@ _PROVIDER_CREDENTIAL_FILE: Dict[str, str] = {
     "deepseek": "deepseek_cred.json",
     "mistral": "mistral_cred.json",
     "gemini": "gemini_cred.json",
+    "anthropic": "anthropic_cred.json",
 }
 
 _PROVIDER_CREDENTIAL_KEY: Dict[str, Tuple[str, ...]] = {
@@ -25,6 +27,7 @@ _PROVIDER_CREDENTIAL_KEY: Dict[str, Tuple[str, ...]] = {
     "deepseek": ("deepseek_api_key",),
     "mistral": ("mistral_api_key",),
     "gemini": ("gemini_api_key", "api_key"),
+    "anthropic": ("anthropic_api_key", "api_key"),
 }
 
 _PROFILE_SOURCES = frozenset({"file", "environment", "systemd"})

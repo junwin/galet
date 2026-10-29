@@ -15,6 +15,7 @@ export GALET_CREDENTIAL_PATH=/home/myname/credential
 | Template | Final file name | JSON key |
 |---|---|---|
 | `oaicred.json.example` | `oaicred.json` | `openai_api_key` |
+| `anthropic_cred.json.example` | `anthropic_cred.json` | `anthropic_api_key` (or `api_key`) |
 | `deepseek_cred.json.example` | `deepseek_cred.json` | `deepseek_api_key` |
 | `gemini_cred.json.example` | `gemini_cred.json` | `gemini_api_key` (or `api_key`) |
 | `mistral_cred.json.example` | `mistral_cred.json` | `mistral_api_key` |
