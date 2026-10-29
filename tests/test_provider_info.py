@@ -11,7 +11,7 @@ from galet.provider_registry import ProviderRegistry
 def test_all_shipped_connectors_register() -> None:
     ProviderRegistry.load_all()
     names = {info.name for info in registered_providers()}
-    assert names == {"openai", "deepseek", "gemini", "mistral", "ollama"}
+    assert names == {"openai", "deepseek", "gemini", "mistral", "ollama", "anthropic"}
 
 
 def test_registered_provider_metadata() -> None:
@@ -30,9 +30,10 @@ def test_get_provider_unknown_returns_none() -> None:
 
 def test_providers_map_has_all_sources() -> None:
     providers = ProviderRegistry.providers()
-    assert set(providers) == {"openai", "deepseek", "gemini", "mistral", "ollama"}
+    assert set(providers) == {"openai", "deepseek", "gemini", "mistral", "ollama", "anthropic"}
     assert providers["openai"] == "galet.openai_responses.OpenAIResponsesApi"
     assert providers["ollama"] == "galet.ollama_api.OllamaApi"
+    assert providers["anthropic"] == "galet.anthropic_api.AnthropicApi"
 
 
 def test_prefix_map_built_from_registration() -> None:
@@ -44,6 +45,7 @@ def test_prefix_map_built_from_registration() -> None:
     assert mapping["gemini"] == "gemini"
     assert mapping["mistral"] == "mistral"
     assert mapping["ollama"] == "ollama"
+    assert mapping["claude"] == "anthropic"
 
 
 def test_default_models_derive_from_registration() -> None:
@@ -54,6 +56,7 @@ def test_default_models_derive_from_registration() -> None:
     assert models["gemini"] == "gemini-2.0-flash"
     assert models["mistral"] == "mistral-small-latest"
     assert models["ollama"] == "llama3.1"
+    assert models["anthropic"] == "claude-sonnet-5-5"
 
 
 def test_resolve_name_uses_registered_prefixes() -> None:
@@ -65,8 +68,13 @@ def test_resolve_name_uses_registered_prefixes() -> None:
     assert ProviderRegistry.resolve_name("o3-mini", None) == "openai"
 
 
+def test_resolve_name_routes_claude_models_to_anthropic() -> None:
+    assert ProviderRegistry.resolve_name("claude-sonnet-5-5", None) == "anthropic"
+    assert ProviderRegistry.resolve_name("claude-3-opus", None) == "anthropic"
+
+
 def test_resolve_name_unknown_model_defaults_to_openai() -> None:
-    assert ProviderRegistry.resolve_name("claude-3-opus", None) == "openai"
+    assert ProviderRegistry.resolve_name("totally-unknown-model", None) == "openai"
 
 
 def test_resolve_name_unknown_explicit_provider_raises() -> None:

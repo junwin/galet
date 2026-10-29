@@ -191,3 +191,39 @@ def test_invalid_profile_configuration_is_rejected(profile, message) -> None:
 
     with pytest.raises(ValueError, match=message):
         settings.api_key("openai")
+
+
+def test_anthropic_key_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-env")
+    assert Settings().api_key("anthropic") == "sk-ant-env"
+
+
+@pytest.mark.parametrize("key_name", ["anthropic_api_key", "api_key"])
+def test_anthropic_key_from_credential_file(tmp_path, monkeypatch, key_name) -> None:
+    (tmp_path / "anthropic_cred.json").write_text(
+        json.dumps({key_name: "sk-ant-file"}), encoding="utf-8"
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert Settings(credential_path=str(tmp_path)).api_key("anthropic") == "sk-ant-file"
+
+
+def test_anthropic_key_is_none_when_unconfigured(monkeypatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GALET_CREDENTIAL_PATH", raising=False)
+    assert Settings().api_key("anthropic") is None
+
+
+def test_anthropic_named_environment_profile(monkeypatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "ignored")
+    monkeypatch.setenv("TEAM_CLAUDE_KEY", "sk-ant-profile")
+    settings = Settings(
+        credential_profiles={
+            "claude-service": {
+                "provider": "anthropic",
+                "source": "environment",
+                "variable": "TEAM_CLAUDE_KEY",
+            }
+        },
+        credential_profile="claude-service",
+    )
+    assert settings.api_key("anthropic") == "sk-ant-profile"

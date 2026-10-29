@@ -61,6 +61,14 @@ BUILTIN_PROVIDERS: Tuple[ProviderInfo, ...] = (
         class_path="galet.ollama_api.OllamaApi",
         default_model="llama3.1",
     ),
+    ProviderInfo(
+        name="anthropic",
+        display_name="Anthropic Claude",
+        description="Anthropic Messages API for Claude models.",
+        prefixes=("claude",),
+        class_path="galet.anthropic_api.AnthropicApi",
+        default_model="claude-sonnet-5-5",
+    ),
 )
 
 

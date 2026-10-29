@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "junwin", email = "jdunwin@gmail.com" }]
-keywords = ["llm", "openai", "gemini", "mistral", "deepseek", "ollama", "embeddings", "image-generation"]
+keywords = ["llm", "openai", "anthropic", "claude", "gemini", "mistral", "deepseek", "ollama", "embeddings", "image-generation"]
 dependencies = ["openai>=3.0.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -24,6 +24,7 @@ classifiers = [
 [project.optional-dependencies]
 openai = ["openai>=3.0.0"]
 gemini = ["google-genai>=2.33.0"]
+anthropic = ["anthropic>=2.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/junwin/galet"

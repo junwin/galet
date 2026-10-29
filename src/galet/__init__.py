@@ -26,6 +26,7 @@ _LAZY_EXPORTS = {
     "MistralResponsesAdapter": ("galet.mistral_responses_adapter", "MistralResponsesAdapter"),
     "OllamaApi": ("galet.ollama_api", "OllamaApi"),
     "GeminiApi": ("galet.gemini_api", "GeminiApi"),
+    "AnthropicApi": ("galet.anthropic_api", "AnthropicApi"),
 }
 
 
@@ -73,4 +74,5 @@ __all__ = [
     "MistralResponsesAdapter",
     "OllamaApi",
     "GeminiApi",
+    "AnthropicApi",
 ]

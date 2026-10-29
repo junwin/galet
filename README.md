@@ -17,6 +17,12 @@ Python 3.11 or newer. For Gemini chat, image and video support, install the
 pip install "galet[gemini]"
 ```
 
+For Claude models through the Anthropic API, install the `anthropic` extra:
+
+```bash
+pip install "galet[anthropic]"
+```
+
 Verify the installation:
 
 ```bash
@@ -37,7 +43,7 @@ no-fail-on-missing-credential semantics are unchanged from that origin.
 
 - **Chat / completions** — provider-agnostic `create_response` with
   temperature, tool calling, and response metadata. Providers: OpenAI,
-  DeepSeek, Gemini, Mistral, Ollama.
+  Anthropic (Claude), DeepSeek, Gemini, Mistral, Ollama.
 - **Routing** — explicit `provider` argument, or automatic model-name prefix
   routing with OpenAI fallback. Source names, model-name prefixes, class paths,
   and default models are declarative; provider implementations load only when selected.
@@ -147,8 +153,9 @@ environment variable.
 If you use a named credential profile instead, `GALET_CREDENTIAL_PATH` is not
 needed for that profile — the profile names its own file, environment variable,
 or systemd credential. Without either route, galet falls back to the provider
-environment variables (`OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
-`MISTRAL_API_KEY`) and never raises when no credential is found.
+environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`) and never raises when
+no credential is found.
 
 ### Verify the installation
 
@@ -244,7 +251,7 @@ variable contains only a directory name and is not itself a secret.
 For backward compatibility, when no named profile is selected Galet retains
 the original lookup order:
 
-1. The provider environment variable (`OPENAI_API_KEY`,
+1. The provider environment variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
    `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, or `MISTRAL_API_KEY`).
 2. The provider file in `credential_path` or `GALET_CREDENTIAL_PATH`.
 
@@ -253,6 +260,7 @@ Credential file names and JSON keys:
 | Provider  | File                 | Key(s) in the file |
 |-----------|----------------------|--------------------|
 | openai    | `oaicred.json`       | `openai_api_key` |
+| anthropic | `anthropic_cred.json` | `anthropic_api_key`, `api_key` |
 | deepseek  | `deepseek_cred.json` | `deepseek_api_key` |
 | gemini    | `gemini_cred.json`   | `gemini_api_key`, `api_key` |
 | mistral   | `mistral_cred.json`  | `mistral_api_key` |
@@ -260,6 +268,41 @@ Credential file names and JSON keys:
 Ready-to-use templates for each file live in `samples/credentials/`: copy
 them into your `GALET_CREDENTIAL_PATH` directory, drop the `.example`
 suffix, and replace the placeholder value.
+
+### Claude (Anthropic) notes
+
+Claude models are routed by the `claude` model-name prefix (or `provider="anthropic"`)
+and default to `claude-sonnet-5-5`. The connector uses the Messages API with the
+same `create_response` interface as every other source:
+
+```python
+from galet.router_api import RouterApi
+
+response = RouterApi().create_response(
+    model="claude-sonnet-5-5",
+    input=[{"role": "user", "content": "Say hello in one short sentence."}],
+)
+print(response.output_text)
+```
+
+Claude-specific behaviour worth knowing:
+
+- **`max_tokens`** is required by the Messages API. It defaults to 16000 and is
+  set per connector with `AnthropicApi(max_tokens=...)`. Claude's thinking
+  tokens count toward it, so raise it for long outputs.
+- **`temperature`** is sent only to models that accept it. Anthropic has removed
+  sampling parameters from its newer models (Opus 4.7 and later, and the 5.x
+  generation; Sonnet 5.5 answers them with a 400), so galet drops `temperature`
+  for those and logs a warning rather than failing the request.
+- **`tool_choice="required"`** is forced tool use. Claude Opus 5.5 and Sonnet 5.5
+  reject it, so galet falls back to `auto` for those models and logs a warning.
+  Haiku 5.5 and earlier models honour it.
+- **Tool loops** are stateless on Anthropic's side. galet keeps the assistant turn
+  (including thinking blocks) in memory keyed by `response_id` and replays it when
+  you send `function_call_output` items with `previous_response_id`. If the
+  process restarted in between, pass `metadata={"previous_tool_calls": [...]}`.
+- **`store`** and **`text`** (structured output format) are accepted for
+  interface compatibility but not forwarded.
 
 ### Ollama base URL
 

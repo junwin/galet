@@ -30,7 +30,7 @@ def model(
 def test_catalog_exposes_registered_source_information() -> None:
     sources = {source.name: source for source in default_model_catalog.sources()}
 
-    assert set(sources) == {"openai", "deepseek", "gemini", "mistral", "ollama"}
+    assert set(sources) == {"openai", "deepseek", "gemini", "mistral", "ollama", "anthropic"}
     assert sources["openai"].default_model == "gpt-4o-mini"
 
 

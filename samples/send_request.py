@@ -22,18 +22,20 @@ Run from the repo root:
 
 Provider sources and their default models:
 
-    openai   -> gpt-4o-mini
-    deepseek -> deepseek-chat
-    gemini   -> gemini-2.0-flash
-    mistral  -> mistral-small-latest
-    ollama   -> llama3.1
+    openai    -> gpt-4o-mini
+    anthropic -> claude-sonnet-5-5
+    deepseek  -> deepseek-chat
+    gemini    -> gemini-2.0-flash
+    mistral   -> mistral-small-latest
+    ollama    -> llama3.1
 
-When ``--provider`` is omitted it is inferred from the model name (mistral-*,
-deepseek-*, gemini-*, gpt-*/o1*/o3* map to their providers). With no
+When ``--provider`` is omitted it is inferred from the model name (claude-*,
+mistral-*, deepseek-*, gemini-*, gpt-*/o1*/o3* map to their providers). With no
 ``--model`` and no ``--provider`` the request defaults to local Ollama.
 
 Non-Ollama providers need an API key. galet reads keys from environment
-variables (OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY),
+variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY,
+MISTRAL_API_KEY),
 from credential files via ``Settings(credential_path=...)``, or from the
 ``GALET_CREDENTIAL_PATH`` environment variable (the directory holding the
 credential files). Pass ``--credential-path`` to point at that directory
@@ -80,7 +82,7 @@ def main() -> None:
     parser.add_argument(
         "--provider",
         default=None,
-        help="Provider source name: openai, deepseek, gemini, mistral, or ollama. "
+        help="Provider source name: openai, anthropic, deepseek, gemini, mistral, or ollama. "
         "Inferred from the model name when omitted; defaults to ollama.",
     )
     parser.add_argument(
